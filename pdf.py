@@ -1,20 +1,20 @@
 import os
-from dotenv import load_dotenv
 import shutil
 from llama_index.core import StorageContext, VectorStoreIndex, load_index_from_storage
 from llama_index.readers.file import PDFReader
 from llama_index.core.settings import Settings
-from llama_index.embeddings.ollama import OllamaEmbedding 
+from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 
-load_dotenv()
-
-Settings.embed_model=OllamaEmbedding(base_url=os.getenv('OLLAMA_BASE_URL'),
-                                     model_name=os.getenv('OLLAMA_MODEL'))
+from vars import *
 
 
-Settings.llm=Ollama(base_url=os.getenv('OLLAMA_BASE_URL'),
-                    model=os.getenv('OLLAMA_MODEL'))
+Settings.embed_model = OllamaEmbedding(base_url=get_ollama_url(),
+                                       model_name=get_ollama_model())
+
+Settings.llm = Ollama(base_url=get_ollama_url(),
+                      model=get_ollama_model())
+
 
 def get_index(data, index_name):
     index = None

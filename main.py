@@ -1,26 +1,25 @@
-
-import os
-import pandas as pd
-from dotenv import load_dotenv
-from llama_index.experimental.query_engine import PandasQueryEngine
+from llama_index.core.query_engine import PandasQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.core.agent import ReActAgent
 from llama_index.core.settings import Settings
 from llama_index.llms.ollama import Ollama
 from note_engine import note_engine
 from pdf import canada_engine
-from resume import omar_resume_engine
 from prompts import new_prompt, instruction_str, context
+from vars import *
+import os
+import pandas as pd
 
 
-load_dotenv()
 
-Settings.llm=Ollama(base_url=os.getenv('OLLAMA_BASE_URL'),
-                    model=os.getenv('OLLAMA_MODEL'))
+print("hi")
 
+Settings.llm=Ollama(base_url=get_ollama_url(),
+                    model=get_ollama_model())
 
 # Path to your population data
 population_path = os.path.join("data", "population.csv")
+print(population_path)
 population_df = pd.read_csv(population_path)
 
 
@@ -45,14 +44,7 @@ tools = [
             description="this gives detailed information about canada the country",
         ),
     ),
-    QueryEngineTool(
-        query_engine=omar_resume_engine,
-        metadata=ToolMetadata(
-            name="omar_resume_data",
-            description="this gives detailed information about the software engineer omar salhi as it his resume",
-        ),
-    ),
-    # note_engine
+    note_engine
 ]
 
 # Create the ReActAgent with your custom LLM
