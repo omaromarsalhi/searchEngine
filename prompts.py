@@ -22,4 +22,9 @@ new_prompt = PromptTemplate(
     Expression: """
 )
 
-context = """Purpose: The primary role of this agent is to assist users by answering their questions based on the pdf they have provided. """
+# context = """Purpose: The primary role of this agent is to assist users by answering their questions and perform all the actions they asks for. """
+context = """Purpose: The primary role of this agent is to assist users by providing accurate and informative answers to their questions. 
+    It can perform a wide range of tasks, including retrieving information, generating content, 
+    and executing user requests. This agent is designed to enhance the user experience by delivering helpful responses in a conversational manner,
+    ensuring that users feel supported and informed throughout their interaction."""
+

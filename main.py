@@ -1,17 +1,18 @@
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.core.agent import ReActAgent
 from llama_index.core.settings import Settings
-
 from llama_index.llms.gemini import Gemini
+from noteEngine import note_engine
 from pdf import pdf_reader
 from prompts import context
 from vars import *
 
 
-Settings.llm = Gemini(api_key=get_gemini_api_key(),temperature=0.01)
+Settings.llm = Gemini(api_key=get_gemini_api_key(),temperature=0.7)
 
 # Define tools
 tools = [
+    note_engine,
     QueryEngineTool(
         query_engine=pdf_reader,
         metadata=ToolMetadata(
