@@ -1,59 +1,81 @@
-from llama_index.core.query_engine import PandasQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.core.agent import ReActAgent
 from llama_index.core.settings import Settings
-from llama_index.llms.ollama import Ollama
-from note_engine import note_engine
-from pdf import canada_engine
-from prompts import new_prompt, instruction_str, context
+
+from llama_index.llms.gemini import Gemini
+from pdf import pdf_reader
+from prompts import context
 from vars import *
-import os
-import pandas as pd
 
 
-
-print("hi")
-
-Settings.llm=Ollama(base_url=get_ollama_url(),
-                    model=get_ollama_model())
-
-# Path to your population data
-population_path = os.path.join("data", "population.csv")
-print(population_path)
-population_df = pd.read_csv(population_path)
-
-
-population_query_engine = PandasQueryEngine(
-    df=population_df, verbose=True, instruction_str=instruction_str
-)
-population_query_engine.update_prompts({"pandas_prompt": new_prompt})
+Settings.llm = Gemini(api_key=get_gemini_api_key(),temperature=0.01)
 
 # Define tools
 tools = [
     QueryEngineTool(
-        query_engine=population_query_engine,
+        query_engine=pdf_reader,
         metadata=ToolMetadata(
-            name="population_data",
-            description="this gives information at the world population and demographics",
+            name="transistor_reader",
+            description="Provides detailed information about computer transistors.",
         ),
     ),
-    QueryEngineTool(
-        query_engine=canada_engine,
-        metadata=ToolMetadata(
-            name="canada_data",
-            description="this gives detailed information about canada the country",
-        ),
-    ),
-    note_engine
 ]
 
-# Create the ReActAgent with your custom LLM
+# Create the ReActAgent with your custom LLM and tools
 agent = ReActAgent.from_tools(tools, verbose=True, context=context)
-
 
 # Query loop
 while (prompt := input("Enter a prompt (q to quit): ")) != "q":
-    result = agent.query(prompt)
-    print(result)
+    try:
+        result = agent.query(prompt)
+        print(result)
+    except ValueError as e:
+        if str(e) == "Reached max iterations.":
+            print("Maximum iterations reached. Restarting the process...")
+        else:
+            raise
 
-# what percent of canadian speak english as thier first language
+
+
+
+# from llama_index.core.tools import QueryEngineTool, ToolMetadata
+# from llama_index.core.agent import ReActAgent
+# from llama_index.core.settings import Settings
+# from llama_index.llms.ollama import Ollama
+# from pdf import pdf_reader
+# from prompts import  context
+# from vars import *
+#
+#
+#
+#
+# Settings.llm=Ollama(base_url=get_ollama_url(),
+#                     model=get_ollama_model())
+#
+# # Define tools
+# tools = [
+#     QueryEngineTool(
+#         query_engine=pdf_reader,
+#         metadata=ToolMetadata(
+#             name="transistor_reader",
+#             description="this gives detailed information about the transistors the computer component",
+#         ),
+#     ),
+# ]
+#
+# # Create the ReActAgent with your custom LLM
+# agent = ReActAgent.from_tools(tools, verbose=True, context=context)
+#
+#
+# # Query loop
+# while (prompt := input("Enter a prompt (q to quit): ")) != "q":
+#     try:
+#         result = agent.query(prompt)
+#         print(result)
+#     except ValueError as e:
+#         if str(e) == "Reached max iterations.":
+#             print("Maximum iterations reached. Restarting the process...")
+#         else:
+#             raise
+#     # result = agent.query(prompt)
+#     # print(result)

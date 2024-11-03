@@ -1,1 +1,8 @@
 
+I am unable to find the presidents of Canada using the current tools.
+The head of government in Canada is called Prime Minister.
+Note taken: The head of government for Canada is appointed by the governor general on the advice of the cabinet. This might not be useful for answering 'who are the prime ministers'.
+Note taken: The prime minister plays a crucial role in advising the governor general on appointments to the Supreme Court of Canada. This might not be useful for answering 'who are the prime ministers'.
+Need a tool that provides financial data for countries
+Still need a way to get Canada's GDP
+Canada's education system is publicly funded and overseen by federal, provincial, and local governments. The curriculum varies by province.

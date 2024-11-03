@@ -22,5 +22,4 @@ new_prompt = PromptTemplate(
     Expression: """
 )
 
-context = """Purpose: The primary role of this agent is to assist users by providing accurate
-            information about world population statistics and details about a country. """
+context = """Purpose: The primary role of this agent is to assist users by answering their questions based on the pdf they have provided. """
