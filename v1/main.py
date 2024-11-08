@@ -21,7 +21,7 @@ population_query_engine.update_prompts({"pandas_prompt": new_prompt})
 
 
 # Set up LLM
-Settings.llm = Gemini(api_key=get_gemini_api_key(), temperature=0.3)
+Settings.llm = Gemini(api_key=get_gemini_api_key(), temperature=0)
 
 # Define tools
 tools = [
