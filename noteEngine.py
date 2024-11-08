@@ -6,7 +6,7 @@ note_file = os.path.join("data", "notes.txt")
 
 def save_note(note):
 
-    formatted_note = f"{note['title']} : {note['content']}"
+    formatted_note = f"{note['title']} :\n{note['content']}"
 
     if not os.path.exists(note_file):
         open(note_file, "w")

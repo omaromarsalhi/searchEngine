@@ -1,2 +1,8 @@
-Transistor Definition : A transistor is a semiconductor device that can amplify or switch electronic signals. It is a key component in modern electronics, used in everything from computers and smartphones to appliances and cars.
-Transistor Definition : Transistors are semiconductor devices that can amplify or switch electronic signals. They are used in a wide variety of electronic devices, including computers, smartphones, and televisions.
+Most Populated Countries :
+| Country | Population | Percentage |
+|---|---|---|
+| China | 1,425,671,352 | 17.72% |
+| India | 1,428,627,663 | 17.76% |
+| United States | 339,996,563 | 4.23% |
+Transistor Definition :
+A transistor is a semiconductor device that can amplify or switch electronic signals. They are used in a wide variety of electronic devices, including computers, smartphones, and televisions.
