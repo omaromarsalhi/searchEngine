@@ -4,7 +4,7 @@ from llama_index.core.objects import SQLTableNodeMapping, SQLTableSchema, Object
 from llama_index.embeddings.gemini import GeminiEmbedding
 from llama_index.llms.gemini import Gemini
 from sqlalchemy import create_engine, inspect
-from sql_db_search.prompt import custom_prompt
+from sql_db_search.prompt import custom_prompt, response_prompt
 from vars import get_gemini_api_key
 
 
@@ -34,7 +34,8 @@ obj_index = ObjectIndex.from_objects(
 query_engine = SQLTableRetrieverQueryEngine(
     sql_database=sql_database,
     table_retriever=obj_index.as_retriever(similarity_top_k=3),
-    text_to_sql_prompt=custom_prompt
+    text_to_sql_prompt=custom_prompt,
+    response_synthesis_prompt=response_prompt
 )
 
 
