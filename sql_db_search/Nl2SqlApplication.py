@@ -81,12 +81,12 @@ class Nl2SqlApplication:
     def __init__(self, config_file='config.ini'):
         self.config = Config(config_file)
         self.database = Database(self.config)
-        self.engine = Nl2SqlEngine(self.config, self.database)
+        self.nl2SqlEngine = Nl2SqlEngine(self.config, self.database)
 
     def run(self):
         """Start the prompt loop for querying."""
         while (prompt := input("Enter a prompt (q to quit): ")) != "q":
-            response = self.engine.query(prompt)
+            response = self.nl2SqlEngine.query(prompt)
             print(response)
 
 
