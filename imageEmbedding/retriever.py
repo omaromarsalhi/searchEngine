@@ -1,5 +1,4 @@
 import configparser
-import os
 from llama_index.core.indices.vector_store import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.embeddings.gemini import GeminiEmbedding
@@ -10,9 +9,8 @@ from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreI
 from llama_index.core.settings import Settings
 
 
-
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read("../config.ini")
 GOOGLE_API_KEY = config["API"]["gemini_key"]
 PINECONE_API_KEY = config["API"]["pinecone_key"]
 
@@ -21,7 +19,6 @@ Settings.embed_model = GeminiEmbedding(
     model_name="models/embedding-001", api_key=GOOGLE_API_KEY
 )
 Settings.llm = Gemini(api_key=GOOGLE_API_KEY)
-
 
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
