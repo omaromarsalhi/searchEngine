@@ -13,7 +13,6 @@ image_urls = [
 image_documents = load_image_urls(image_urls)
 
 gemini_pro = GeminiMultiModal(api_key=GOOGLE_API_KEY, model_name="models/gemini-1.5-pro-latest")
-
 while (prompt := input("Enter a prompt (q to quit): ")) != "q":
     try:
         response = gemini_pro.complete(
