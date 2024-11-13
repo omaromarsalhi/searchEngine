@@ -1,0 +1,9 @@
+llama-index-embeddings-clip
+llama-index-core~=0.11.12
+pandas~=2.2.3
+pillow~=10.4.0
+pinecone-client~=5.0.1
+pydantic~=2.9.2
+SQLAlchemy~=2.0.35
+kagglehub~=0.3.4
+matplotlib~=3.9.2
