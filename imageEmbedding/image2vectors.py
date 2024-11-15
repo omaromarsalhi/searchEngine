@@ -29,6 +29,7 @@ Settings.embed_model = GeminiEmbedding(api_key=GOOGLE_API_KEY)
 Settings.chunk_size = 512
 
 pinecone_client = Pinecone(PINECONE_API_KEY)
+
 index_name = "images"
 if index_name not in pinecone_client.list_indexes().names():
     pinecone_client.create_index(index_name
