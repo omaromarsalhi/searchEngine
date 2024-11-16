@@ -51,6 +51,14 @@ storage_context = StorageContext.from_defaults(
 #
 documents = SimpleDirectoryReader(DATA_PATH).load_data()
 
+keys_to_keep = ["file_name", "file_path", "file_type"]
+
+for doc in documents:
+    metadata = doc.extra_info or {}
+    filtered_metadata = {key: metadata[key] for key in keys_to_keep if key in metadata}
+    doc.extra_info = filtered_metadata
+
+
 index = MultiModalVectorStoreIndex.from_documents(
     documents,
     storage_context=storage_context,
@@ -61,21 +69,18 @@ retriever = MultiModalVectorIndexRetriever(
     similarity_top_k=1,
     image_similarity_top_k=1
 )
-# Initialize the retriever
-# retriever = index.as_retriever(similarity_top_k=1)
 
-# Interactive loop for querying
-while (prompt := input("Enter a prompt (q to quit): ")) != "q":
-    try:
-        # query_bundle = QueryBundle(query_str="", image_path=prompt)
-        # response = retriever.image_to_image_retrieve(query_bundle)
-        results = retriever.text_to_image_retrieve(prompt)
-        filtered_results = [result for result in results if result.score >= 0.5]
-        print(filtered_results)
-        for resp in filtered_results:
-            show_image(resp.metadata.get('file_path'))
-    except ValueError as e:
-        print("Error:", e)
+# while (prompt := input("Enter a prompt (q to quit): ")) != "q":
+#     try:
+#         # query_bundle = QueryBundle(query_str="", image_path=prompt)
+#         # response = retriever.image_to_image_retrieve(query_bundle)
+#         results = retriever.text_to_image_retrieve(prompt)
+#         filtered_results = [result for result in results if result.score >= 0.5]
+#         print(filtered_results)
+#         for resp in filtered_results:
+#             show_image(resp.metadata.get('file_path'))
+#     except ValueError as e:
+#         print("Error:", e)
 
 # retriever_engine = index.as_retriever(image_similarity_top_k=1)
 #

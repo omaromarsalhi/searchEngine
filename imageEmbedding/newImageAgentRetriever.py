@@ -1,10 +1,7 @@
 import configparser
-
-from llama_index.core.query_engine import RetrieverQueryEngine
-
 from prompts import context
 from PIL import Image
-from llama_index.core import Settings, SimpleDirectoryReader, StorageContext, QueryBundle, VectorStoreIndex
+from llama_index.core import Settings, QueryBundle
 from llama_index.core.agent import ReActAgent
 from llama_index.core.indices import MultiModalVectorStoreIndex
 from llama_index.core.indices.multi_modal import MultiModalVectorIndexRetriever
@@ -12,7 +9,7 @@ from llama_index.embeddings.gemini import GeminiEmbedding
 from llama_index.llms.gemini import Gemini
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.tools import FunctionTool
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 
 
 # Helper function to display an image
