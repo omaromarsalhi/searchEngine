@@ -1,3 +1,4 @@
+import configparser
 import os
 from typing import Optional
 
@@ -10,26 +11,23 @@ from pinecone import Pinecone, ServerlessSpec
 from pydantic import BaseModel
 import matplotlib.pyplot as plt
 from PIL import Image
-from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex, GPTVectorStoreIndex, \
-    load_index_from_storage
+from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.multi_modal_llms.gemini import GeminiMultiModal
 from llama_index.core.program import MultiModalLLMCompletionProgram
 from llama_index.core.output_parsers import PydanticOutputParser
 from llama_index.core.settings import Settings
 
-GOOGLE_API_KEY = ""
-os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
-PINECONE_API_KEY = ""
+
+config = configparser.ConfigParser()
+config.read("../config.ini")
+GOOGLE_API_KEY = config["API"]["gemini_key"]
+PINECONE_API_KEY = config["API"]["pinecone_key"]
+
 
 Settings.embed_model = GeminiEmbedding(
     model_name="models/embedding-001", api_key=GOOGLE_API_KEY
 )
 Settings.llm = Gemini(api_key=GOOGLE_API_KEY)
-
-
-#
-#
-
 
 class GoogleRestaurant(BaseModel):
     """Data model for a Google Restaurant."""
@@ -142,7 +140,6 @@ index.storage_context.persist(persist_dir="google_images_index")
 retriever = VectorIndexRetriever(index=index, similarity_top_k=1)
 
 query_engine = RetrieverQueryEngine(retriever=retriever)
-
 
 response = query_engine.query(
     "recommend an Orlando restaurant for me and its nearby tourist places"
