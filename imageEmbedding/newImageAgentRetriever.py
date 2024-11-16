@@ -53,14 +53,15 @@ image_store = PineconeVectorStore(
 index = MultiModalVectorStoreIndex.from_vector_store(vector_store=image_store, image_vector_store=image_store)
 
 retriever = MultiModalVectorIndexRetriever(
-    index=index, image_similarity_top_k=1
+    index=index, image_similarity_top_k=3
 )
 
 
 # Define tool 1: Retrieve images based on text input
 def text_to_image_tool(prompt: str):
     results = retriever.text_to_image_retrieve(prompt)
-    filtered_results = [result for result in results if result.score >= 0.1]
+    unique_results = list({result.node_id: result for result in results}.values())
+    filtered_results = [result for result in unique_results if result.score >= 0.1]
     for result in filtered_results:
         print("score: " + str(result.score))
         show_image(result.metadata.get('file_path'))
@@ -71,7 +72,8 @@ def text_to_image_tool(prompt: str):
 def image_to_image_tool(image_path: str):
     query_bundle = QueryBundle(query_str="", image_path=image_path)
     results = retriever.image_to_image_retrieve(query_bundle)
-    filtered_results = [result for result in results if result.score >= 0.5]
+    unique_results = list({result.node_id: result for result in results}.values())
+    filtered_results = [result for result in unique_results if result.score >= 0.9]
     for result in filtered_results:
         print("score: " + str(result.score))
         show_image(result.metadata.get('file_path'))

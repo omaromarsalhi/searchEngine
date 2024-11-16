@@ -1,13 +1,10 @@
 import configparser
-import os
-
 from PIL import Image
-from llama_index.core import Settings, StorageContext, SimpleDirectoryReader, QueryBundle
+from llama_index.core import Settings, StorageContext, SimpleDirectoryReader
 from llama_index.core.indices import MultiModalVectorStoreIndex
 from llama_index.core.indices.multi_modal import MultiModalVectorIndexRetriever
 from llama_index.embeddings.gemini import GeminiEmbedding
 from llama_index.llms.gemini import Gemini
-from llama_index.multi_modal_llms.gemini import GeminiMultiModal
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 
