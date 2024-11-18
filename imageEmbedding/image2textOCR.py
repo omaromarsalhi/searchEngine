@@ -9,8 +9,6 @@ from llama_index.llms.gemini import Gemini
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 from pydantic import BaseModel
-import matplotlib.pyplot as plt
-from PIL import Image
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.multi_modal_llms.gemini import GeminiMultiModal
 from llama_index.core.program import MultiModalLLMCompletionProgram

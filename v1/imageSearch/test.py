@@ -7,7 +7,7 @@ import random
 from typing import Optional, List
 from PIL import Image as PILImage
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
-from llama_index.core.indices.vector_store import VectorIndexRetriever, VectorIndexAutoRetriever
+from llama_index.core.indices.vector_store import VectorIndexAutoRetriever
 from llama_index.core.output_parsers import PydanticOutputParser
 from llama_index.core.program import MultiModalLLMCompletionProgram
 from llama_index.core.schema import TextNode
@@ -20,7 +20,7 @@ from llama_index.llms.gemini import Gemini
 from pinecone import Pinecone, ServerlessSpec
 from pydantic import BaseModel, Field
 
-from imageSearch.prompts import  custom_receipts_prompt
+from v1.imageSearch.prompts import  custom_receipts_prompt
 
 config = configparser.ConfigParser()
 config.read("config.ini")
