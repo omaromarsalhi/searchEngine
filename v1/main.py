@@ -2,8 +2,8 @@ import os
 import pandas as pd
 from llama_index.core import Settings
 from llama_index.core.agent import ReActAgent
-from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.experimental import PandasQueryEngine
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.llms.gemini import Gemini
 
 from noteEngine import note_engine

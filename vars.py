@@ -1,4 +1,4 @@
 
 
 def get_gemini_api_key():
-    return ""
+    return "AIzaSyCIzQjSKflJ4JN-gxk3N0luuGnvn59xKHs"
