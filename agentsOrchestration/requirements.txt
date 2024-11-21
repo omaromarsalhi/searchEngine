@@ -1,0 +1,9 @@
+llama-index-core
+llama-index-llms-openai
+python-dotenv
+colorama
+llama-index-llms-anthropic
+llama-index-utils-workflow
+llama_index-llms-gemini
+pydantic
+google-cloud-aiplatform
