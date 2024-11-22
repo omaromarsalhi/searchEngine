@@ -1,11 +1,16 @@
-from llama_index.core.tools import FunctionTool
-from llama_index.llms.gemini import Gemini
+import configparser
+import os
 
-from MyGeminiModel import MyGeminiModel
+from llama_index.core.tools import FunctionTool
+from agentsOrchestration.test_hitl_agent.MyGeminiModel import MyGeminiModel
 from agentsOrchestration.test_hitl_agent.AgentConfig import AgentConfig
 from agentsOrchestration.test_hitl_agent.HITLAgent import HITLAgent, ToolRequestEvent, ProgressEvent, ToolApprovedEvent
 import asyncio
 
+
+config = configparser.ConfigParser()
+config.read("../../config.ini")
+os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
 def add_two_numbers(a: int, b: int) -> int:
     """Used to add two numbers together."""
@@ -40,10 +45,14 @@ async def main():
     )
     # Stream and process events
     async for event in handler.stream_events():
-        if isinstance(event, ProgressEvent):
-            # Handle progress events
-            print(event.msg)
-        elif isinstance(event, ToolRequestEvent):
+        # print(f"Event type: {type(event)}")
+        # print("omar")
+        # if isinstance(event, ProgressEvent):
+        #     print("omar1")
+        #     # Handle progress events
+        #     print(event.msg)
+        # elif isinstance(event, ToolRequestEvent):
+            print("omar2")
             # Handle tool request events
             print(f"Tool {event.tool_name} requires human approval. Approving!")
             handler.ctx.send_event(ToolApprovedEvent(

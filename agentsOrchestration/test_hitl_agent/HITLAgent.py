@@ -1,15 +1,17 @@
-from llama_index.core.llms.function_calling import FunctionCallingLLM
+import configparser
+import os
 from llama_index.core.workflow import Event, Workflow, Context, StartEvent, StopEvent, step
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.tools import ToolSelection
-from llama_index.llms.gemini import Gemini
-from llama_index.llms.openai import OpenAI
-
-from MyGeminiModel import MyGeminiModel
+from agentsOrchestration.test_hitl_agent.MyGeminiModel import MyGeminiModel
 from agentsOrchestration.test_hitl_agent import AgentConfig
-from agentsOrchestration.test_hitl_agent.CustomFunctionCallingLLM import  CustomFunctionCallingLLM
 
+
+
+config = configparser.ConfigParser()
+config.read("../../config.ini")
+os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
 class LLMCallEvent(Event):
     pass
@@ -51,7 +53,7 @@ class HITLAgent(Workflow):
         """Sets up the workflow, validates inputs, and stores them in the context."""
         agent_config = ev.get("agent_config")
         user_msg = ev.get("user_msg")
-        llm: LLM = ev.get("llm", default=MyGeminiModel(api_key=""))
+        llm: LLM = ev.get("llm", default=MyGeminiModel())
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
 

@@ -10,6 +10,10 @@ from llama_index.llms.openai.utils import resolve_tool_choice, OpenAIToolCall
 
 
 class MyGeminiModel(Gemini,FunctionCallingLLM):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def _prepare_chat_with_tools(
         self,
         tools: List["BaseTool"],
@@ -23,12 +27,6 @@ class MyGeminiModel(Gemini,FunctionCallingLLM):
     ) -> Dict[str, Any]:
         """Predict and call the tool."""
         tool_specs = [tool.metadata.to_openai_tool() for tool in tools]
-
-        # # if strict is passed in, use, else default to the class-level attribute, else default to True`
-        # if strict is not None:
-        #     strict = strict
-        # else:
-        #     strict = self.strict
 
         if self.metadata.is_function_calling_model:
             for tool_spec in tool_specs:
@@ -52,8 +50,7 @@ class MyGeminiModel(Gemini,FunctionCallingLLM):
             **kwargs,
         }
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+
 
     def get_tool_calls_from_response(
         self,

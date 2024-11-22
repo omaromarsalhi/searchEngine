@@ -1,3 +1,5 @@
+import configparser
+import os
 from typing import Any
 
 from llama_index.core.llms.function_calling import FunctionCallingLLM
@@ -24,9 +26,14 @@ from llama_index.core.workflow import (
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 
-from llama_index.multi_modal_llms.gemini import GeminiMultiModal
-
+from agentsOrchestration.MyGeminiModel import MyGeminiModel
 from utils import FunctionToolWithContext
+
+
+
+# config = configparser.ConfigParser()
+# config.read("../config.ini")
+# os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
 
 # ---- Pydantic models for config/llm prediction ----
@@ -130,11 +137,7 @@ class ConciergeAgent(Workflow):
         active_speaker = await ctx.get("active_speaker", default="")
         user_msg = ev.get("user_msg")
         agent_configs = ev.get("agent_configs", default=[])
-        # llm: FunctionCallingLLM = ev.get("llm", default=Gemini(generation_config=GenerationConfig(temperature=0),api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg"))
-        # llm: FunctionCallingLLM = FunctionCallingLLM(ev.get("llm",
-        #                                  default=Gemini(api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg")
-        #                                  ))
-        llm: LLM = ev.get("llm", default=Gemini())
+        llm: LLM = ev.get("llm", default=MyGeminiModel())
 
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
@@ -148,9 +151,9 @@ class ConciergeAgent(Workflow):
                 "User message, agent configs, llm, and chat_history are required!"
             )
 
-        if not llm.metadata.is_function_calling_model:
-            print(llm.metadata)
-            raise ValueError("LLM must be a function calling model!")
+        # if not llm.metadata.is_function_calling_model:
+        #     print(llm.metadata)
+        #     raise ValueError("LLM must be a function calling model!")
 
         # store the agent configs in the context
         agent_configs_dict = {ac.name: ac for ac in agent_configs}

@@ -1,10 +1,11 @@
 import asyncio
-
+import configparser
+import os
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
-from llama_index.llms.gemini import Gemini
 
+from agentsOrchestration.MyGeminiModel import MyGeminiModel
 from workflow import (
     AgentConfig,
     ConciergeAgent,
@@ -13,6 +14,10 @@ from workflow import (
     ToolApprovedEvent,
 )
 from utils import FunctionToolWithContext
+
+config = configparser.ConfigParser()
+config.read("../config.ini")
+os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
 
 def get_initial_state() -> dict:
@@ -235,7 +240,7 @@ async def main():
     from colorama import Fore, Style
 
     # llm = OpenAI(model="gpt-4o", temperature=0.4)
-    llm = Gemini(api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg")
+    llm = MyGeminiModel()
     memory = ChatMemoryBuffer.from_defaults(llm=llm)
     initial_state = get_initial_state()
     agent_configs = get_agent_configs()
