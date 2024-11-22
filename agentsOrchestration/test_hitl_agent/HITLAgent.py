@@ -4,7 +4,9 @@ from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEv
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.tools import ToolSelection
 from llama_index.llms.gemini import Gemini
+from llama_index.llms.openai import OpenAI
 
+from MyGeminiModel import MyGeminiModel
 from agentsOrchestration.test_hitl_agent import AgentConfig
 from agentsOrchestration.test_hitl_agent.CustomFunctionCallingLLM import  CustomFunctionCallingLLM
 
@@ -49,7 +51,7 @@ class HITLAgent(Workflow):
         """Sets up the workflow, validates inputs, and stores them in the context."""
         agent_config = ev.get("agent_config")
         user_msg = ev.get("user_msg")
-        llm: CustomFunctionCallingLLM = ev.get("llm", default=Gemini(api_key="AIzaSyCIzQjSKflJ4JN-gxk3N0luuGnvn59xKHs"))
+        llm: LLM = ev.get("llm", default=MyGeminiModel(api_key=""))
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
 

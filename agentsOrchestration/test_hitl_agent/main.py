@@ -1,5 +1,7 @@
 from llama_index.core.tools import FunctionTool
 from llama_index.llms.gemini import Gemini
+
+from MyGeminiModel import MyGeminiModel
 from agentsOrchestration.test_hitl_agent.AgentConfig import AgentConfig
 from agentsOrchestration.test_hitl_agent.HITLAgent import HITLAgent, ToolRequestEvent, ProgressEvent, ToolApprovedEvent
 import asyncio
@@ -20,7 +22,7 @@ agent_config = AgentConfig(
     tools_requiring_human_confirmation=["add_two_numbers"],
 )
 
-llm = Gemini(api_key="AIzaSyCIzQjSKflJ4JN-gxk3N0luuGnvn59xKHs")
+llm = MyGeminiModel(api_key="")
 
 
 workflow = HITLAgent()
