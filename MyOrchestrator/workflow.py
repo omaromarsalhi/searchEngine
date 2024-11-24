@@ -25,6 +25,7 @@ from llama_index.core.workflow import (
     Context,
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
+from torch.backends.mkl import verbose
 
 from agentsOrchestration.MyGeminiModel import MyGeminiModel
 from utils import FunctionToolWithContext
@@ -203,6 +204,7 @@ class ConciergeAgent(Workflow):
             response, error_on_no_tool_call=False
         )
         if len(tool_calls) == 0:
+            print("no tool selected")
             chat_history.append(response.message)
             await ctx.set("chat_history", chat_history)
             return StopEvent(
@@ -215,6 +217,7 @@ class ConciergeAgent(Workflow):
         await ctx.set("num_tool_calls", len(tool_calls))
 
         for tool_call in tool_calls:
+            print("tool selected")
             if tool_call.tool_name == "RequestTransfer":
                 await ctx.set("active_speaker", None)
                 ctx.write_event_to_stream(

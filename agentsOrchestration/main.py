@@ -2,16 +2,15 @@ import asyncio
 import configparser
 import os
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.tools import BaseTool
+from llama_index.core.tools import BaseTool, FunctionTool
 from llama_index.core.workflow import Context
 
 from agentsOrchestration.MyGeminiModel import MyGeminiModel
 from workflow import (
     AgentConfig,
-    ConciergeAgent,
     ProgressEvent,
     ToolRequestEvent,
-    ToolApprovedEvent,
+    ToolApprovedEvent, OrchestratorAgent,
 )
 from utils import FunctionToolWithContext
 
@@ -43,8 +42,8 @@ def get_stock_lookup_tools() -> list[BaseTool]:
         return company_name.upper()
 
     return [
-        FunctionToolWithContext.from_defaults(fn=lookup_stock_price),
-        FunctionToolWithContext.from_defaults(fn=search_for_stock_symbol),
+        # FunctionToolWithContext.from_defaults(fn=lookup_stock_price),
+        # FunctionToolWithContext.from_defaults(fn=search_for_stock_symbol),
     ]
 
 
@@ -63,11 +62,11 @@ def get_authentication_tools() -> list[BaseTool]:
         await ctx.set("user_state", user_state)
 
     async def login(ctx: Context, password: str) -> str:
+        print(f"password is:{password}")
         """Given a password, logs in and stores a session token in the user state."""
         user_state = await ctx.get("user_state")
         username = user_state["username"]
         ctx.write_event_to_stream(ProgressEvent(msg=f"Logging in user {username}"))
-        # todo: actually check the password
         session_token = "1234567890"
         user_state["session_token"] = session_token
         user_state["account_id"] = "123"
@@ -77,9 +76,9 @@ def get_authentication_tools() -> list[BaseTool]:
         return f"Logged in user {username} with session token {session_token}. They have an account with id {user_state['account_id']} and a balance of ${user_state['account_balance']}."
 
     return [
-        FunctionToolWithContext.from_defaults(async_fn=store_username),
-        FunctionToolWithContext.from_defaults(async_fn=login),
-        FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
+        # FunctionToolWithContext.from_defaults(async_fn=store_username),
+        FunctionToolWithContext.from_defaults(fn=login),
+        # FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 
 
@@ -119,9 +118,9 @@ def get_account_balance_tools() -> list[BaseTool]:
         return f"Account {account_id} has a balance of ${account_balance}"
 
     return [
-        FunctionToolWithContext.from_defaults(async_fn=get_account_id),
-        FunctionToolWithContext.from_defaults(async_fn=get_account_balance),
-        FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
+        # FunctionToolWithContext.from_defaults(async_fn=get_account_id),
+        # FunctionToolWithContext.from_defaults(async_fn=get_account_balance),
+        # FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 
 
@@ -175,10 +174,10 @@ def get_transfer_money_tools() -> list[BaseTool]:
         )
 
     return [
-        FunctionToolWithContext.from_defaults(async_fn=transfer_money),
-        FunctionToolWithContext.from_defaults(async_fn=balance_sufficient),
-        FunctionToolWithContext.from_defaults(async_fn=has_balance),
-        FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
+        # FunctionToolWithContext.from_defaults(async_fn=transfer_money),
+        # FunctionToolWithContext.from_defaults(async_fn=balance_sufficient),
+        # FunctionToolWithContext.from_defaults(async_fn=has_balance),
+        # FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 
 
@@ -244,7 +243,7 @@ async def main():
     memory = ChatMemoryBuffer.from_defaults(llm=llm)
     initial_state = get_initial_state()
     agent_configs = get_agent_configs()
-    workflow = ConciergeAgent(timeout=None)
+    workflow = OrchestratorAgent(timeout=None)
 
     # draw a diagram of the workflow
     # draw_all_possible_flows(workflow, filename="workflow.html")

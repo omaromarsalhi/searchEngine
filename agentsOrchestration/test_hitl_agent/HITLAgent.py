@@ -4,6 +4,9 @@ from llama_index.core.workflow import Event, Workflow, Context, StartEvent, Stop
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.tools import ToolSelection
+from llama_index.llms.gemini import Gemini
+from  llama_index.llms.openai import OpenAI
+
 from agentsOrchestration.test_hitl_agent.MyGeminiModel import MyGeminiModel
 from agentsOrchestration.test_hitl_agent import AgentConfig
 
@@ -66,9 +69,6 @@ class HITLAgent(Workflow):
                 "User message, llm, and chat_history are required!"
             )
 
-        # if not llm.metadata.is_function_calling_model:
-        #     raise ValueError("LLM must be a function calling model!")
-
         await ctx.set("agent_config", agent_config)
         await ctx.set("llm", llm)
 
@@ -100,6 +100,7 @@ class HITLAgent(Workflow):
         tools = agent_config.tools
 
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
+        print(response)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False

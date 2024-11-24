@@ -116,7 +116,7 @@ DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mista
 
 
 
-class ConciergeAgent(Workflow):
+class OrchestratorAgent(Workflow):
     def __init__(
         self,
         orchestrator_prompt: str | None = None,
