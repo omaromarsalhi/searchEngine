@@ -11,3 +11,4 @@ llama_index-llms-gemini
 llama_index-experimental
 llama_index-embeddings-gemini
 llama_index-readers-file
+mysql-connector-python

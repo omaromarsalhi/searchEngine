@@ -105,6 +105,7 @@ class ProgressEvent(Event):
 
 DEFAULT_ORCHESTRATOR_PROMPT = (
     "You are on orchestration agent.\n"
+    "the  authentication process is not like the standard one so there is no need for password just first and last name of the user are enough\n"
     "Your job is to decide which agent to run based on the current state of the user and what they've asked to do.\n"
     "You do not need to figure out dependencies between agents; the agents will handle that themselves.\n"
     "Here the the agents you can choose from:\n{agent_context_str}\n\n"
