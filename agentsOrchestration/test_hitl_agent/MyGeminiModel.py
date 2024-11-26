@@ -91,6 +91,8 @@ class MyGeminiModel(Gemini,FunctionCallingLLM):
         """Predict and call the tool."""
 
         tool_calls = self.extract_tool_calls(response)
+        print("tool_calls", tool_calls)
+
 
         if len(tool_calls) < 1:
             if error_on_no_tool_call:
@@ -102,21 +104,17 @@ class MyGeminiModel(Gemini,FunctionCallingLLM):
 
         tool_selections = []
         for tool_call in tool_calls:
-            if not isinstance(tool_call, get_args(OpenAIToolCall)):
-                raise ValueError("Invalid tool_call object")
-            if tool_call.type != "function":
-                raise ValueError("Invalid tool type. Unsupported by OpenAI")
-
             # this should handle both complete and partial jsons
             try:
-                argument_dict = parse_partial_json(tool_call.function.arguments)
+                argument_dict = parse_partial_json(tool_call.get('function').get('arguments'))
+
             except ValueError:
                 argument_dict = {}
 
             tool_selections.append(
                 ToolSelection(
-                    tool_id=tool_call.id,
-                    tool_name=tool_call.function.name,
+                    tool_id=tool_call.get('id'),
+                    tool_name=tool_call.get('function').get("name"),
                     tool_kwargs=argument_dict,
                 )
             )

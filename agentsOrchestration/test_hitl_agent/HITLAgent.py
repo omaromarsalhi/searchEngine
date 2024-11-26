@@ -15,7 +15,7 @@ from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.program.function_program import get_function_tool
 from llama_index.core.tools import (
     BaseTool,
-    ToolSelection,
+    ToolSelection, FunctionTool,
 )
 from llama_index.core.workflow import (
     Event,
@@ -142,7 +142,7 @@ DEFAULT_ORCHESTRATOR_PROMPT = (
     "  {{\n"
     "    \"message\": {{\n"
     "      \"role\": \"assistant\",\n"
-    "      \"content\": \"Transfer the task to <AGENT_NAME> agent.\",\n"
+    "      \"content\": \"Transfer the task to <AGENT_NAME> agent\",\n"
     "      \"additional_kwargs\": {{\n"
     "        \"tool_calls\": [\n"
     "          {{\n"
@@ -178,6 +178,8 @@ DEFAULT_ORCHESTRATOR_PROMPT = (
 
 
 
+
+
 DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mistake or preconditions not being met."
 
 
@@ -195,6 +197,16 @@ class OrchestratorAgent(Workflow):
         self.default_tool_reject_str = (
             default_tool_reject_str or DEFAULT_TOOL_REJECT_STR
         )
+
+    def request_transfer(self) -> None:
+        """Used to indicate that your job is done and you would like to transfer control to another agent."""
+        pass
+
+    def transfer_to_agent(self,agent_name: str) -> None:
+        """Used to transfer the user to a specific agent."""
+        pass
+
+
 
     @step
     async def setup(
@@ -235,8 +247,8 @@ class OrchestratorAgent(Workflow):
         if active_speaker:
             return ActiveSpeakerEvent()
 
+        print("OrchestratorEvent")
         # otherwise, we need to decide who the next active speaker is
-        print("orchestrator needed")
         return OrchestratorEvent(user_msg=user_msg)
 
     @step
@@ -244,7 +256,7 @@ class OrchestratorAgent(Workflow):
         self, ctx: Context, ev: ActiveSpeakerEvent
     ) -> ToolCallEvent | ToolRequestEvent | StopEvent:
         """Speaks with the active sub-agent and handles tool calls (if any)."""
-        # Setup the agent for the active speaker
+
         active_speaker = await ctx.get("active_speaker")
 
         agent_config: AgentConfig = (await ctx.get("agent_configs"))[active_speaker]
@@ -260,12 +272,13 @@ class OrchestratorAgent(Workflow):
 
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
 
+        request_transfer_tool = FunctionTool.from_defaults(fn=self.request_transfer)
         # inject the request transfer tool into the list of tools
-        tools = [get_function_tool(RequestTransfer)] + agent_config.tools
+        tools = [request_transfer_tool] + agent_config.tools
 
-        print("response form the agent_config:", agent_config.name)
+
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        print("response form the orchestrator:", response)
+        print("agent response:", response)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
@@ -416,10 +429,12 @@ class OrchestratorAgent(Workflow):
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
         llm = await ctx.get("llm")
 
+        transfer_to_agent_tool = FunctionTool.from_defaults(fn=self.transfer_to_agent)
         # convert the TransferToAgent pydantic model to a tool
-        tools = [get_function_tool(TransferToAgent)]
+        tools = [transfer_to_agent_tool]
 
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
+        print("response:", response )
 
         tool_calls = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
@@ -436,7 +451,9 @@ class OrchestratorAgent(Workflow):
             )
 
         tool_call = tool_calls[0]
+        print(tool_call)
         selected_agent = tool_call.tool_kwargs["agent_name"]
+        print("selected_agent",selected_agent)
         await ctx.set("active_speaker", selected_agent)
 
         ctx.write_event_to_stream(

@@ -70,7 +70,7 @@ async def main():
 
     # Await the final result of the handler
     final_result = await handler
-    # print(final_result["response"])
+    print(final_result["response"])
 
 
 if __name__ == "__main__":
