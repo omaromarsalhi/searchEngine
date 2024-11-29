@@ -217,7 +217,7 @@ class OrchestratorAgent(Workflow):
         active_speaker = await ctx.get("active_speaker", default="")
         user_msg = ev.get("user_msg")
         agent_configs = ev.get("agent_configs", default=[])
-        llm: LLM = ev.get("llm", default=MyGeminiModel())
+        llm: LLM = ev.get("llm", default=MyGeminiModel(model_name="models/gemini-1.5-flash-latest"))
 
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
@@ -277,8 +277,7 @@ class OrchestratorAgent(Workflow):
         tools = [request_transfer_tool] + agent_config.tools
 
 
-        response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        print("agent response:", response)
+        response = await llm.my_achat_with_tools_for_agent_test(tools, chat_history=llm_input)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
@@ -433,8 +432,7 @@ class OrchestratorAgent(Workflow):
         # convert the TransferToAgent pydantic model to a tool
         tools = [transfer_to_agent_tool]
 
-        response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        print("response:", response )
+        response = await llm.my_achat_with_tools(tools, chat_history=llm_input)
 
         tool_calls = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
@@ -451,7 +449,6 @@ class OrchestratorAgent(Workflow):
             )
 
         tool_call = tool_calls[0]
-        print(tool_call)
         selected_agent = tool_call.tool_kwargs["agent_name"]
         print("selected_agent",selected_agent)
         await ctx.set("active_speaker", selected_agent)

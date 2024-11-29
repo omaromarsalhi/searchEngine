@@ -34,7 +34,7 @@ agent_configs = AgentConfig(
     tools_requiring_human_confirmation=[],
 )
 
-llm = MyGeminiModel()
+llm = MyGeminiModel(model_name="models/gemini-1.5-flash-latest")
 
 
 workflow = OrchestratorAgent()
