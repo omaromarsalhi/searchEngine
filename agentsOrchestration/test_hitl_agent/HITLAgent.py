@@ -267,14 +267,17 @@ class OrchestratorAgent(Workflow):
         user_state_str = "\n".join([f"{k}: {v}" for k, v in user_state.items()])
         system_prompt = (
             agent_config.system_prompt.strip()
-            + f"\n\nHere is the current user state:\n{user_state_str}"
+            + f"\n\nHere is the current user state:\n{user_state_str}\n"
+            + "do respect the argument data types i give you"
         )
+
 
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
 
         request_transfer_tool = FunctionTool.from_defaults(fn=self.request_transfer)
         # inject the request transfer tool into the list of tools
-        tools = [request_transfer_tool] + agent_config.tools
+        # tools = [request_transfer_tool] + agent_config.tools
+        tools = agent_config.tools
 
 
         response = await llm.my_achat_with_tools_for_agent_test(tools, chat_history=llm_input)
@@ -282,6 +285,7 @@ class OrchestratorAgent(Workflow):
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
+        print("agent tools: ",tool_calls)
         if len(tool_calls) == 0:
             chat_history.append(response.message)
             await ctx.set("chat_history", chat_history)
@@ -301,6 +305,7 @@ class OrchestratorAgent(Workflow):
                     ProgressEvent(msg="Agent is requesting a transfer. Please hold.")
                 )
                 return OrchestratorEvent()
+
             elif tool_call.tool_name in agent_config.tools_requiring_human_confirmation:
                 ctx.write_event_to_stream(
                     ToolRequestEvent(
@@ -353,6 +358,7 @@ class OrchestratorAgent(Workflow):
         tool_msg = None
 
         tool = tools_by_name.get(tool_call.tool_name)
+
         additional_kwargs = {
             "tool_call_id": tool_call.tool_id,
             "name": tool.metadata.get_name(),
@@ -366,7 +372,8 @@ class OrchestratorAgent(Workflow):
 
         try:
             if isinstance(tool, FunctionToolWithContext):
-                tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
+                print("in the calling function")
+                tool_output = await tool.acall(ctx,**tool_call.tool_kwargs)
             else:
                 tool_output = await tool.acall(**tool_call.tool_kwargs)
 
@@ -434,7 +441,7 @@ class OrchestratorAgent(Workflow):
 
         response = await llm.my_achat_with_tools(tools, chat_history=llm_input)
 
-        tool_calls = llm.get_tool_calls_from_response(
+        tool_calls = llm.get_agent_calls_from_response(
             response, error_on_no_tool_call=False
         )
 

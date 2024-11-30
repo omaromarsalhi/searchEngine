@@ -119,6 +119,7 @@ class FunctionToolWithContext(FunctionTool):
 
     async def acall(self, ctx: Context, *args: Any, **kwargs: Any) -> ToolOutput:
         """Call."""
+        print(args, kwargs)
         tool_output = await self._async_fn(ctx, *args, **kwargs)
         return ToolOutput(
             content=str(tool_output),

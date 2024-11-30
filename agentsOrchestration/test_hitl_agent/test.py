@@ -14,36 +14,48 @@ config = configparser.ConfigParser()
 config.read("../../config.ini")
 os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
-
-
 genai.configure(api_key=config.get('API', 'gemini_key'))
 
-def get_order_status(order_id: str) -> str:
-    """Fetches the status of a given order ID."""
-    # Mock data for example purposes
-    order_statuses = {
-        "12345": "Shipped",
-        "67890": "Processing",
-        "11223": "Delivered"
-    }
-    return order_statuses.get(order_id, "Order ID not found.")
+# def get_order_status(order_id: str) -> str:
+#     """Fetches the status of a given order ID."""
+#     # Mock data for example purposes
+#     order_statuses = {
+#         "12345": "Shipped",
+#         "67890": "Processing",
+#         "11223": "Delivered"
+#     }
+#     return order_statuses.get(order_id, "Order ID not found.")
+#
+#
+# def initiate_return(order_id: str, reason: str) -> str:
+#     """Initiates a return for a given order ID with a specified reason."""
+#     if order_id in ["12345", "67890", "11223"]:
+#         return f"Return initiated for order {order_id} due to: {reason}."
+#     else:
+#         return "Order ID not found. Cannot initiate return."
 
+calculator = {'function_declarations': [
+    {'name': 'multiply',
+     'description': 'Returns the product of two numbers.',
+     'parameters': {'type_': 'OBJECT',
+                    'properties': {
+                        'a': {'type_': 'NUMBER'},
+                        'b': {'type_': 'NUMBER'}},
+                    'required': ['a', 'b']}}]}
 
-def initiate_return(order_id: str, reason: str) -> str:
-    """Initiates a return for a given order ID with a specified reason."""
-    if order_id in ["12345", "67890", "11223"]:
-        return f"Return initiated for order {order_id} due to: {reason}."
-    else:
-        return "Order ID not found. Cannot initiate return."
-
+cl = {'function_declarations': [{'name': 'add_two_numbers',
+                    'description': 'add_two_numbers(a: int, b: int) -> int\nUsed to add two numbers together.',
+                     'parameters': {'properties': {'a': { 'type': 'integer'},
+                                                                     'b': { 'type': 'integer'}},
+                                                      'required': ['a', 'b'], 'type': 'object'}}]}
 
 model = genai.GenerativeModel(
     model_name='gemini-1.5-flash-latest',
     # tools=[get_order_status, initiate_return] # list of all available tools
 )
 response = model.generate_content(
-    "What is the status of order 12345?",
-    tools=[get_order_status, initiate_return]
+    f"What's 234551 + 325552 ?",
+    tools=[cl]
 )
 print(response.candidates[0].content.parts[0].function_call)
 

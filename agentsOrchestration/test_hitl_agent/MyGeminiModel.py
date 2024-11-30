@@ -9,27 +9,19 @@ from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.llms.llm import ToolSelection
 from llama_index.core.llms.utils import parse_partial_json
 from llama_index.core.tools import BaseTool
+from llama_index.core.utilities.gemini_utils import ROLES_FROM_GEMINI
 from llama_index.llms.gemini import Gemini
 from llama_index.llms.gemini.utils import _error_if_finished_early
 from llama_index.llms.openai.utils import resolve_tool_choice, OpenAIToolCall
 import google.generativeai as genai
+
+from agentsOrchestration.test_hitl_agent.GeminiTools import GeminiTools
 
 
 def add_two_numbers(a: int, b: int) -> int:
     """Used to add two numbers together."""
     print("banana")
     return a + b
-
-
-def get_order_status(order_id: str) -> str:
-    """Fetches the status of a given order ID."""
-    # Mock data for example purposes
-    order_statuses = {
-        "12345": "Shipped",
-        "67890": "Processing",
-        "11223": "Delivered"
-    }
-    return order_statuses.get(order_id, "Order ID not found.")
 
 
 class MyGeminiModel(Gemini, FunctionCallingLLM):
@@ -50,6 +42,7 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
     ) -> Dict[str, Any]:
         """Predict and call the tool."""
         tool_specs = [tool.metadata.to_openai_tool() for tool in tools]
+        # tool_specs = [tool.metadata. for tool in tools]
 
         # if self.metadata.is_function_calling_model:
         for tool_spec in tool_specs:
@@ -73,14 +66,15 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
             **kwargs,
         }
 
-    def _prepare_chat_with_My_tools(
-            self,
+    @staticmethod
+    def _prepare_chat_with_agent_tools(
             tools: List["BaseTool"],
             user_msg: Optional[Union[str, ChatMessage]] = None,
             chat_history: Optional[List[ChatMessage]] = None,
     ) -> Dict[str, Any]:
         """Predict and call the tool."""
-        tool_specs = [tool.metadata.to_openai_tool() for tool in tools]
+        tool_specs = [GeminiTools.to_gemini_tool(tool.metadata) for tool in tools]
+        print("tools specs : ", tool_specs)
 
         if isinstance(user_msg, str):
             user_msg = ChatMessage(role=MessageRole.USER, content=user_msg)
@@ -89,9 +83,9 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
         if user_msg:
             messages.append(user_msg)
 
-        new_messages=''
+        new_messages = ''
         for chat in chat_history:
-            new_messages += str(self.to_gemini_message_dict(chat))
+            new_messages += str(GeminiTools.to_gemini_message_dict(chat))
 
         return {
             "contents": new_messages,
@@ -133,16 +127,16 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
             chat_history: Optional[List[ChatMessage]] = None,
     ) -> ChatResponse:
         """Async chat with function calling."""
-        chat_kwargs = self._prepare_chat_with_My_tools(
+        chat_kwargs = self._prepare_chat_with_agent_tools(
             tools,
             user_msg=user_msg,
             chat_history=chat_history,
         )
-        print("my content: ",chat_kwargs.get("contents"))
-        response = await self.my_complete(chat_kwargs.get("contents"), chat_kwargs.get("tools"), )
-        print("response from the ai: ", response.raw)
 
-        return ChatResponse(message=ChatMessage())
+        response = await self.my_complete(chat_kwargs.get("contents"), chat_kwargs.get("tools"))
+        print(response.raw)
+        role = ROLES_FROM_GEMINI[response.raw["content"]["role"]]
+        return ChatResponse(message=ChatMessage(role=role, content="function calling return"), raw=response.raw)
 
     @llm_completion_callback()
     async def my_complete(
@@ -167,22 +161,6 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
             )
         return CompletionResponse(text="function calling return", raw=raw)
 
-    @staticmethod
-    def to_gemini_message_dict(message: ChatMessage, drop_none: bool = False, ):
-        """Convert generic message to Gemini message dict."""
-        message_dict = {
-            "role": message.role.value,
-            "content": message.content,
-        }
-
-        null_keys = [key for key, value in message_dict.items() if value is None]
-        # if drop_none is True, remove keys with None values
-        if drop_none:
-            for key in null_keys:
-                message_dict.pop(key)
-
-        return message_dict  # type: ignore
-
     def get_tool_calls_from_response(
             self,
             response: "ChatResponse",
@@ -191,7 +169,37 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
     ) -> List[ToolSelection]:
         """Predict and call the tool."""
 
-        tool_calls = self.extract_tool_calls(response)
+        tool_calls = response.raw["content"]["parts"]
+
+        if len(tool_calls) < 1:
+            if error_on_no_tool_call:
+                raise ValueError(
+                    f"Expected at least one tool call, but got {len(tool_calls)} tool calls."
+                )
+            else:
+                return []
+
+        tool_selections = []
+        for tool_call in tool_calls:
+            tool_selections.append(
+                ToolSelection(
+                    tool_id="123",
+                    tool_name=tool_call["function_call"]["name"],
+                    tool_kwargs=tool_call["function_call"]["args"],
+                )
+            )
+
+        return tool_selections
+
+    def get_agent_calls_from_response(
+            self,
+            response: "ChatResponse",
+            error_on_no_tool_call: bool = True,
+            **kwargs: Any,
+    ) -> List[ToolSelection]:
+        """Predict and call the tool."""
+
+        tool_calls = GeminiTools.extract_tool_calls(response)
 
         if len(tool_calls) < 1:
             if error_on_no_tool_call:
@@ -219,28 +227,3 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
             )
 
         return tool_selections
-
-    def extract_tool_calls(self, chat_response):
-        chat_response_str = chat_response.model_dump_json()
-
-        chat_response_str = chat_response_str.replace('assistant: ```json', '').replace('```', '').strip()
-
-        try:
-            response_dict = json.loads(chat_response_str)
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {e}")
-            return []
-
-        content_str = response_dict.get("message", {}).get("content", "")
-
-        if isinstance(content_str, str) and content_str.startswith('json'):
-            try:
-                content_json = json.loads(content_str[4:])
-                tool_calls = content_json.get("message", {}).get("additional_kwargs", {}).get("tool_calls", [])
-                return tool_calls
-            except json.JSONDecodeError as e:
-                print(f"Error decoding content JSON: {e}")
-                return []
-        else:
-            print("No valid content to parse.")
-            return []

@@ -18,13 +18,14 @@ config.read("../../config.ini")
 os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
 
-def add_two_numbers(a: int, b: int) -> int:
+async def add_two_numbers(a: float, b: float) -> float:
     """Used to add two numbers together."""
     print("banana")
     return a + b
 
 
-add_two_numbers_tool = FunctionToolWithContext.from_defaults(fn=add_two_numbers)
+add_two_numbers_tool = FunctionToolWithContext.from_defaults(async_fn=add_two_numbers)
+
 
 agent_configs = AgentConfig(
     name="Addition Agent",
@@ -34,6 +35,7 @@ agent_configs = AgentConfig(
     tools_requiring_human_confirmation=[],
 )
 
+
 llm = MyGeminiModel(model_name="models/gemini-1.5-flash-latest")
 
 
@@ -42,7 +44,7 @@ workflow = OrchestratorAgent()
 async def main():
     handler = workflow.run(
         agent_configs=[agent_configs],
-        user_msg="What is 10 + 10?",
+        user_msg="What is 12 + 14 ?",
         chat_history=[],
         initial_state={"user_name": "Logan"},
         llm=llm,
@@ -51,11 +53,9 @@ async def main():
     async for event in handler.stream_events():
         print(f"Event type: {type(event)}")
         if isinstance(event, ProgressEvent):
-            print("omar1")
             # Handle progress events
             print(event.msg)
         elif isinstance(event, ToolRequestEvent):
-            print("omar2")
             # Handle tool request events
             print(f"Tool {event.tool_name} requires human approval. Approving!")
             handler.ctx.send_event(ToolApprovedEvent(
