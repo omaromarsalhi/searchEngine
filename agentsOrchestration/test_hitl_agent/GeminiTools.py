@@ -14,13 +14,18 @@ class GeminiTools:
                 "Tool description exceeds maximum length of 1024 characters. "
                 "Please shorten your description or move it to the prompt."
             )
-        return {
+        function_declaration = {
             "function_declarations": [{
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": GeminiTools.get_parameters_dict(tool),
-            }],
+            }]
         }
+
+        parameters = GeminiTools.get_parameters_dict(tool)
+        if parameters:
+            function_declaration["function_declarations"][0]["parameters"] = parameters
+
+        return function_declaration
 
     @staticmethod
     def get_parameters_dict(tool: ToolMetadata) -> dict:
@@ -39,12 +44,16 @@ class GeminiTools:
                 for k, v in parameters.items()
                 if k in ["type", "properties", "required", "definitions"]
             }
-            for item in parameters["properties"].values():
-                del item["title"]
+            if parameters["properties"] == {}:
+                return {}
+            else:
+                for item in parameters["properties"].values():
+                    del item["title"]
+
         return parameters
 
     @staticmethod
-    def to_gemini_message_dict(message: ChatMessage, drop_none: bool = False, ):
+    def to_gemini_message_dict(message: ChatMessage, drop_none: bool = True, ):
         """Convert generic message to Gemini message dict."""
         message_dict = {
             "role": message.role.value,
@@ -58,8 +67,6 @@ class GeminiTools:
                 message_dict.pop(key)
 
         return message_dict  # type: ignore
-
-
 
     @staticmethod
     def extract_tool_calls(chat_response):

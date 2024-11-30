@@ -17,20 +17,19 @@ config = configparser.ConfigParser()
 config.read("../../config.ini")
 os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
 
-
-async def add_two_numbers(a: float, b: float) -> float:
+def add_two_numbers(a: float, b: float) -> float:
     """Used to add two numbers together."""
     print("banana")
     return a + b
 
 
-add_two_numbers_tool = FunctionToolWithContext.from_defaults(async_fn=add_two_numbers)
+add_two_numbers_tool = FunctionTool.from_defaults(fn=add_two_numbers)
 
 
 agent_configs = AgentConfig(
     name="Addition Agent",
     description="Used to add two numbers together.",
-    system_prompt="You are an agent that adds two numbers together. Do not help the user with anything else.",
+    system_prompt="You are an agent that adds two numbers together. Do not help the user with anything else.stop once you have answered the questions",
     tools=[add_two_numbers_tool],
     tools_requiring_human_confirmation=[],
 )

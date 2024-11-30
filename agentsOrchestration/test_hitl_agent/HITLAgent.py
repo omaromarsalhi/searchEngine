@@ -184,6 +184,9 @@ DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mista
 
 
 
+def request_transfer() -> None:
+    """Used to indicate that your job is done and you would like to transfer control to another agent."""
+    pass
 
 class OrchestratorAgent(Workflow):
     def __init__(
@@ -198,9 +201,7 @@ class OrchestratorAgent(Workflow):
             default_tool_reject_str or DEFAULT_TOOL_REJECT_STR
         )
 
-    def request_transfer(self) -> None:
-        """Used to indicate that your job is done and you would like to transfer control to another agent."""
-        pass
+
 
     def transfer_to_agent(self,agent_name: str) -> None:
         """Used to transfer the user to a specific agent."""
@@ -268,16 +269,15 @@ class OrchestratorAgent(Workflow):
         system_prompt = (
             agent_config.system_prompt.strip()
             + f"\n\nHere is the current user state:\n{user_state_str}\n"
-            + "do respect the argument data types i give you"
         )
 
 
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
 
-        request_transfer_tool = FunctionTool.from_defaults(fn=self.request_transfer)
+        request_transfer_tool = FunctionTool.from_defaults(fn=request_transfer)
         # inject the request transfer tool into the list of tools
-        # tools = [request_transfer_tool] + agent_config.tools
-        tools = agent_config.tools
+        tools = [request_transfer_tool] + agent_config.tools
+        # tools = agent_config.tools
 
 
         response = await llm.my_achat_with_tools_for_agent_test(tools, chat_history=llm_input)
@@ -286,6 +286,7 @@ class OrchestratorAgent(Workflow):
             response, error_on_no_tool_call=False
         )
         print("agent tools: ",tool_calls)
+
         if len(tool_calls) == 0:
             chat_history.append(response.message)
             await ctx.set("chat_history", chat_history)
@@ -373,9 +374,12 @@ class OrchestratorAgent(Workflow):
         try:
             if isinstance(tool, FunctionToolWithContext):
                 print("in the calling function")
-                tool_output = await tool.acall(ctx,**tool_call.tool_kwargs)
+                tool_output =  tool.call(ctx,**tool_call.tool_kwargs)
             else:
-                tool_output = await tool.acall(**tool_call.tool_kwargs)
+                tool_output =  tool.call(**tool_call.tool_kwargs)
+
+            print("my tool out put: ",tool_output.content)
+            print("my tool out put: ",tool_output.tool_name)
 
             tool_msg = ChatMessage(
                 role="tool",

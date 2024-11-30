@@ -18,10 +18,9 @@ import google.generativeai as genai
 from agentsOrchestration.test_hitl_agent.GeminiTools import GeminiTools
 
 
-def add_two_numbers(a: int, b: int) -> int:
-    """Used to add two numbers together."""
-    print("banana")
-    return a + b
+def request_transfer() -> None:
+    """Used to indicate that your job is done and you would like to transfer control to another agent."""
+    pass
 
 
 class MyGeminiModel(Gemini, FunctionCallingLLM):
@@ -87,6 +86,8 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
         for chat in chat_history:
             new_messages += str(GeminiTools.to_gemini_message_dict(chat))
 
+        print("chat history : ", chat_history)
+
         return {
             "contents": new_messages,
             "tools": tool_specs,
@@ -136,7 +137,7 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
         response = await self.my_complete(chat_kwargs.get("contents"), chat_kwargs.get("tools"))
         print(response.raw)
         role = ROLES_FROM_GEMINI[response.raw["content"]["role"]]
-        return ChatResponse(message=ChatMessage(role=role, content="function calling return"), raw=response.raw)
+        return ChatResponse(message=ChatMessage(role=role, content="function calling return to answer the user question "+str(response.raw['content'])), raw=response.raw)
 
     @llm_completion_callback()
     async def my_complete(
@@ -181,6 +182,10 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
 
         tool_selections = []
         for tool_call in tool_calls:
+            # args={}
+            # for key in tool_call["function_call"]["args"]:
+            #     args[key] = float(tool_call["function_call"]["args"][key])
+            # print("new args: ",args)
             tool_selections.append(
                 ToolSelection(
                     tool_id="123",
