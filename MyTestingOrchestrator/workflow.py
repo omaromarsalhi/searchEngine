@@ -1,12 +1,12 @@
 import configparser
 import os
+import re
+import time
+import uuid
 from typing import Any
 
-from llama_index.core.llms.function_calling import FunctionCallingLLM
-
-
-from llama_index.llms.gemini import Gemini
-from llama_index.llms.openai import OpenAI
+from llama_index.core.base.llms.types import MessageRole
+from llama_index.llms.mistralai import MistralAI
 from pydantic import BaseModel, ConfigDict, Field
 
 from llama_index.core.llms import ChatMessage, LLM
@@ -25,17 +25,13 @@ from llama_index.core.workflow import (
     Context,
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
-from torch.backends.mkl import verbose
-
-from agentsOrchestration.MyGeminiModel import MyGeminiModel
-from utils import FunctionToolWithContext
 
 
+# from utils import FunctionToolWithContext
 
-# config = configparser.ConfigParser()
-# config.read("../config.ini")
-# os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
-
+config = configparser.ConfigParser()
+config.read("../config.ini")
+os.environ["MISTRAL_API_KEY"] = config.get('API', 'mistral_key')
 
 # ---- Pydantic models for config/llm prediction ----
 
@@ -105,20 +101,17 @@ class ProgressEvent(Event):
 # ---- Workflow ----
 
 DEFAULT_ORCHESTRATOR_PROMPT = (
-    "You are on orchestration agent.\n"
-    "the  authentication process is not like the standard one so there is no need for password just first and last name of the user are enough\n"
-    "Your job is to decide which agent to run based on the current state of the user and what they've asked to do.\n"
-    "You do not need to figure out dependencies between agents; the agents will handle that themselves.\n"
-    "Here the the agents you can choose from:\n{agent_context_str}\n\n"
-    "Here is the current user state:\n{user_state_str}\n\n"
-    "Please assist the user and transfer them as needed."
+    "You are the orchestration agent responsible for assigning the correct sub-agent "
+    "based on the user's current state and request. Available agents:\n{agent_context_str}\n\n"
+    "Current user state:\n{user_state_str}\n\n"
+    "Please determine the next step and transfer the user to the appropriate agent."
 )
 DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mistake or preconditions not being met."
 
 
 
 
-class ConciergeAgent(Workflow):
+class OrchestratorAgent(Workflow):
     def __init__(
         self,
         orchestrator_prompt: str | None = None,
@@ -139,7 +132,11 @@ class ConciergeAgent(Workflow):
         active_speaker = await ctx.get("active_speaker", default="")
         user_msg = ev.get("user_msg")
         agent_configs = ev.get("agent_configs", default=[])
-        llm: LLM = ev.get("llm", default=MyGeminiModel())
+        # llm: FunctionCallingLLM = ev.get("llm", default=Gemini(generation_config=GenerationConfig(temperature=0),api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg"))
+        # llm: FunctionCallingLLM = FunctionCallingLLM(ev.get("llm",
+        #                                  default=Gemini(api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg")
+        #                                  ))
+        llm: LLM = ev.get("llm", default=MistralAI(model="mistral-large-latest"))
 
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
@@ -153,9 +150,9 @@ class ConciergeAgent(Workflow):
                 "User message, agent configs, llm, and chat_history are required!"
             )
 
-        # if not llm.metadata.is_function_calling_model:
-        #     print(llm.metadata)
-        #     raise ValueError("LLM must be a function calling model!")
+        if not llm.metadata.is_function_calling_model:
+            print(llm.metadata)
+            raise ValueError("LLM must be a function calling model!")
 
         # store the agent configs in the context
         agent_configs_dict = {ac.name: ac for ac in agent_configs}
@@ -193,18 +190,26 @@ class ConciergeAgent(Workflow):
             + f"\n\nHere is the current user state:\n{user_state_str}"
         )
 
+
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
-
+        # for msg in llm_input:
+        #     if msg.role == 'tool':
+        #         msg.tool_call_id = msg.additional_kwargs.get('tool_call_id')
         # inject the request transfer tool into the list of tools
-        tools = [get_function_tool(RequestTransfer)] + agent_config.tools
-
-        response = await llm.achat_with_tools(tools, chat_history=llm_input)
+        # tools = [get_function_tool(RequestTransfer)] + agent_config.tools
+        tools = agent_config.tools
+        print("tools :",tools)
+        print("inside agent: before ")
+        print("llm_input :",llm_input)
+        response = await llm.achat_with_tools(tools, chat_history=llm_input,tool_choice="any")
+        print("inside agent: after ")
+        time.sleep(5)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
+        print("called tools :",tool_calls)
         if len(tool_calls) == 0:
-            print("no tool selected")
             chat_history.append(response.message)
             await ctx.set("chat_history", chat_history)
             return StopEvent(
@@ -217,7 +222,6 @@ class ConciergeAgent(Workflow):
         await ctx.set("num_tool_calls", len(tool_calls))
 
         for tool_call in tool_calls:
-            print("tool selected")
             if tool_call.tool_name == "RequestTransfer":
                 await ctx.set("active_speaker", None)
                 ctx.write_event_to_stream(
@@ -225,6 +229,7 @@ class ConciergeAgent(Workflow):
                 )
                 return OrchestratorEvent()
             elif tool_call.tool_name in agent_config.tools_requiring_human_confirmation:
+                print("human here")
                 ctx.write_event_to_stream(
                     ToolRequestEvent(
                         prefix=f"Tool {tool_call.tool_name} requires human approval.",
@@ -234,6 +239,7 @@ class ConciergeAgent(Workflow):
                     )
                 )
             else:
+                print("worked here ")
                 ctx.send_event(
                     ToolCallEvent(tool_call=tool_call, tools=agent_config.tools)
                 )
@@ -276,31 +282,32 @@ class ConciergeAgent(Workflow):
         tool_msg = None
 
         tool = tools_by_name.get(tool_call.tool_name)
+        print("selected tool, ",tool_call)
         additional_kwargs = {
             "tool_call_id": tool_call.tool_id,
+            # "id": tool_call.tool_id,
             "name": tool.metadata.get_name(),
         }
         if not tool:
             tool_msg = ChatMessage(
-                role="tool",
+                role=MessageRole.TOOL,
                 content=f"Tool {tool_call.tool_name} does not exist",
                 additional_kwargs=additional_kwargs,
             )
 
         try:
-            if isinstance(tool, FunctionToolWithContext):
-                tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
-            else:
-                tool_output = await tool.acall(**tool_call.tool_kwargs)
-
+            # if isinstance(tool, FunctionToolWithContext):
+            #     tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
+            # else:
+            tool_output = await tool.acall(**tool_call.tool_kwargs)
             tool_msg = ChatMessage(
-                role="tool",
+                role=MessageRole.TOOL,
                 content=tool_output.content,
                 additional_kwargs=additional_kwargs,
             )
         except Exception as e:
             tool_msg = ChatMessage(
-                role="tool",
+                role=MessageRole.TOOL,
                 content=f"Encountered error in tool call: {e}",
                 additional_kwargs=additional_kwargs,
             )
@@ -344,8 +351,10 @@ class ConciergeAgent(Workflow):
 
         user_state = await ctx.get("user_state")
         user_state_str = "\n".join([f"{k}: {v}" for k, v in user_state.items()])
+        # Generate the system prompt dynamically, using the orchestrator prompt template
         system_prompt = self.orchestrator_prompt.format(
-            agent_context_str=agent_context_str, user_state_str=user_state_str
+            agent_context_str=agent_context_str,
+            user_state_str=user_state_str
         )
 
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
@@ -355,6 +364,7 @@ class ConciergeAgent(Workflow):
         tools = [get_function_tool(TransferToAgent)]
 
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
+        time.sleep(5)
         tool_calls = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
