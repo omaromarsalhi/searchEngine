@@ -10,6 +10,10 @@ import google.generativeai as genai
 
 from agentsOrchestration.test_hitl_agent.MyGeminiModel import MyGeminiModel
 
+
+import llama_index
+print(llama_index.__version__)
+
 config = configparser.ConfigParser()
 config.read("../../config.ini")
 os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')

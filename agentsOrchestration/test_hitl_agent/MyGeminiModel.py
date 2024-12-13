@@ -86,7 +86,7 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
         for chat in chat_history:
             new_messages += str(GeminiTools.to_gemini_message_dict(chat))
 
-        print("chat history : ", chat_history)
+        print("chat history : ", new_messages)
 
         return {
             "contents": new_messages,
@@ -137,7 +137,8 @@ class MyGeminiModel(Gemini, FunctionCallingLLM):
         response = await self.my_complete(chat_kwargs.get("contents"), chat_kwargs.get("tools"))
         print(response.raw)
         role = ROLES_FROM_GEMINI[response.raw["content"]["role"]]
-        return ChatResponse(message=ChatMessage(role=role, content="function calling return to answer the user question "+str(response.raw['content'])), raw=response.raw)
+
+        return ChatResponse(message=ChatMessage(role=role, content=str(response.raw['content'])), raw=response.raw)
 
     @llm_completion_callback()
     async def my_complete(

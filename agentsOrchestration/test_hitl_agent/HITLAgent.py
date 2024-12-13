@@ -101,7 +101,6 @@ class ProgressEvent(Event):
     msg: str
 
 
-
 class ChatMessageOutputParser(PydanticOutputParser):
     def __init__(self, output_class):
         super().__init__(output_class)
@@ -109,8 +108,6 @@ class ChatMessageOutputParser(PydanticOutputParser):
     def parse_output(self, model_output: str) -> ChatMessage:
         # Assuming the model output is already a dictionary
         return self.parse_output(model_output)
-
-
 
 
 # ---- Workflow ----
@@ -127,6 +124,7 @@ DEFAULT_ORCHESTRATOR_PROMPT = (
     "You are an orchestration agent.\n"
     "Your job is to decide which agent to run based on the current state of the user and what they've asked to do.\n"
     "Always use the 'TransferToAgent' tool to select an agent.\n"
+    "if the agent gives you an answer then return it"
     "\n"
     "### Instructions for Your Response ###\n"
     "- Do not directly answer the user's question.\n"
@@ -173,45 +171,34 @@ DEFAULT_ORCHESTRATOR_PROMPT = (
     "Help the user by transferring their query to the most appropriate agent."
 )
 
-
-
-
-
-
-
-
 DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mistake or preconditions not being met."
-
 
 
 def request_transfer() -> None:
     """Used to indicate that your job is done and you would like to transfer control to another agent."""
     pass
 
+
 class OrchestratorAgent(Workflow):
     def __init__(
-        self,
-        orchestrator_prompt: str | None = None,
-        default_tool_reject_str: str | None = None,
-        **kwargs: Any,
+            self,
+            orchestrator_prompt: str | None = None,
+            default_tool_reject_str: str | None = None,
+            **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self.orchestrator_prompt = orchestrator_prompt or DEFAULT_ORCHESTRATOR_PROMPT
         self.default_tool_reject_str = (
-            default_tool_reject_str or DEFAULT_TOOL_REJECT_STR
+                default_tool_reject_str or DEFAULT_TOOL_REJECT_STR
         )
 
-
-
-    def transfer_to_agent(self,agent_name: str) -> None:
+    def transfer_to_agent(self, agent_name: str) -> None:
         """Used to transfer the user to a specific agent."""
         pass
 
-
-
     @step
     async def setup(
-        self, ctx: Context, ev: StartEvent
+            self, ctx: Context, ev: StartEvent
     ) -> ActiveSpeakerEvent | OrchestratorEvent:
         """Sets up the workflow, validates inputs, and stores them in the context."""
 
@@ -223,15 +210,14 @@ class OrchestratorAgent(Workflow):
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
         if (
-            user_msg is None
-            or agent_configs is None
-            or llm is None
-            or chat_history is None
+                user_msg is None
+                or agent_configs is None
+                or llm is None
+                or chat_history is None
         ):
             raise ValueError(
                 "User message, agent configs, llm, and chat_history are required!"
             )
-
 
         # store the agent configs in the context
         agent_configs_dict = {ac.name: ac for ac in agent_configs}
@@ -254,7 +240,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def speak_with_sub_agent(
-        self, ctx: Context, ev: ActiveSpeakerEvent
+            self, ctx: Context, ev: ActiveSpeakerEvent
     ) -> ToolCallEvent | ToolRequestEvent | StopEvent:
         """Speaks with the active sub-agent and handles tool calls (if any)."""
 
@@ -267,10 +253,9 @@ class OrchestratorAgent(Workflow):
         user_state = await ctx.get("user_state")
         user_state_str = "\n".join([f"{k}: {v}" for k, v in user_state.items()])
         system_prompt = (
-            agent_config.system_prompt.strip()
-            + f"\n\nHere is the current user state:\n{user_state_str}\n"
+                agent_config.system_prompt.strip()
+                + f"\n\nHere is the current user state:\n{user_state_str}\n"
         )
-
 
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
 
@@ -279,13 +264,12 @@ class OrchestratorAgent(Workflow):
         tools = [request_transfer_tool] + agent_config.tools
         # tools = agent_config.tools
 
-
         response = await llm.my_achat_with_tools_for_agent_test(tools, chat_history=llm_input)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
-        print("agent tools: ",tool_calls)
+        print("agent tools: ", tool_calls)
 
         if len(tool_calls) == 0:
             chat_history.append(response.message)
@@ -326,7 +310,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def handle_tool_approval(
-        self, ctx: Context, ev: ToolApprovedEvent
+            self, ctx: Context, ev: ToolApprovedEvent
     ) -> ToolCallEvent | ToolCallResultEvent:
         """Handles the approval or rejection of a tool call."""
         if ev.approved:
@@ -350,7 +334,7 @@ class OrchestratorAgent(Workflow):
 
     @step(num_workers=4)
     async def handle_tool_call(
-        self, ctx: Context, ev: ToolCallEvent
+            self, ctx: Context, ev: ToolCallEvent
     ) -> ActiveSpeakerEvent:
         """Handles the execution of a tool call."""
         tool_call = ev.tool_call
@@ -374,17 +358,24 @@ class OrchestratorAgent(Workflow):
         try:
             if isinstance(tool, FunctionToolWithContext):
                 print("in the calling function")
-                tool_output =  tool.call(ctx,**tool_call.tool_kwargs)
+                tool_output = tool.call(ctx, **tool_call.tool_kwargs)
             else:
-                tool_output =  tool.call(**tool_call.tool_kwargs)
+                tool_output = tool.call(**tool_call.tool_kwargs)
 
-            print("my tool out put: ",tool_output.content)
-            print("my tool out put: ",tool_output.tool_name)
+
+            content = {
+                'function_response': {
+                    'name': tool_output.tool_name,
+                    'args': tool_call.tool_kwargs,
+                    'response': tool_output.content
+                }
+            }
+
+            print("my new content of tool: ",content)
 
             tool_msg = ChatMessage(
                 role="tool",
-                content=tool_output.content,
-                additional_kwargs=additional_kwargs,
+                content=content,
             )
         except Exception as e:
             tool_msg = ChatMessage(
@@ -403,7 +394,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def aggregate_tool_results(
-        self, ctx: Context, ev: ToolCallResultEvent
+            self, ctx: Context, ev: ToolCallResultEvent
     ) -> ActiveSpeakerEvent:
         """Collects the results of all tool calls and updates the chat history."""
         num_tool_calls = await ctx.get("num_tool_calls")
@@ -420,7 +411,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def orchestrator(
-        self, ctx: Context, ev: OrchestratorEvent
+            self, ctx: Context, ev: OrchestratorEvent
     ) -> ActiveSpeakerEvent | StopEvent:
         """Decides which agent to run next, if any."""
         agent_configs = await ctx.get("agent_configs")
@@ -461,7 +452,7 @@ class OrchestratorAgent(Workflow):
 
         tool_call = tool_calls[0]
         selected_agent = tool_call.tool_kwargs["agent_name"]
-        print("selected_agent",selected_agent)
+        print("selected_agent", selected_agent)
         await ctx.set("active_speaker", selected_agent)
 
         ctx.write_event_to_stream(
@@ -469,6 +460,3 @@ class OrchestratorAgent(Workflow):
         )
 
         return ActiveSpeakerEvent()
-
-
-

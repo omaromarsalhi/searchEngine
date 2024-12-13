@@ -1,6 +1,0 @@
-Top 3 Most Populated Countries :
-| Country Name | Population | Percentage |
-|---|---|---|
-| India | 1,428,627,663 | 17.76% |
-| China | 1,425,671,352 | 17.72% |
-| United States | 339,996,563 | 4.23% |
