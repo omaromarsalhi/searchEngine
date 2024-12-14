@@ -177,7 +177,7 @@ class OrchestratorAgent(Workflow):
         self, ctx: Context, ev: ActiveSpeakerEvent
     ) -> ToolCallEvent | ToolRequestEvent | StopEvent:
         """Speaks with the active sub-agent and handles tool calls (if any)."""
-        # Setup the agent for the active speaker
+
         active_speaker = await ctx.get("active_speaker")
 
         agent_config: AgentConfig = (await ctx.get("agent_configs"))[active_speaker]

@@ -2,9 +2,6 @@ import asyncio
 import configparser
 import os
 
-from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.tools import BaseTool, FunctionTool
-from llama_index.core.workflow import Context
 from llama_index.llms.mistralai import MistralAI
 from workflow import (
     AgentConfig,
@@ -241,17 +238,15 @@ def add_two_numbers(a: float, b: float) -> float:
     print("banana")
     return a + b
 
-
-add_two_numbers_tool = FunctionTool.from_defaults(fn=add_two_numbers)
-stop_function = FunctionTool.from_defaults(fn=request_transfer)
-
+add_two_numbers_tool = FunctionToolWithContext.from_defaults(fn=add_two_numbers)
+stop_function = FunctionToolWithContext.from_defaults(fn=request_transfer)
 
 agent_configs = AgentConfig(
     name="Addition Agent",
     description="Used to add two numbers together.",
     system_prompt="You are an agent that adds two numbers together"
                   "always look in the additional_kwargs to find the functions ids or any related information about the function ",
-    tools=[add_two_numbers_tool,stop_function],
+    tools=[add_two_numbers_tool],
     tools_requiring_human_confirmation=[],
 )
 
@@ -335,6 +330,7 @@ agent_configs = AgentConfig(
 #             chat_history=memory.get(),
 #             initial_state=initial_state,
 #         )
+
 workflow = OrchestratorAgent(timeout=None)
 llm=MistralAI()
 

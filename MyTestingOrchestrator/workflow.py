@@ -1,7 +1,9 @@
+import asyncio
 import configparser
 import os
 import re
 import time
+import traceback
 import uuid
 from typing import Any
 
@@ -26,6 +28,7 @@ from llama_index.core.workflow import (
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 
+from MyTestingOrchestrator.utils import FunctionToolWithContext
 
 # from utils import FunctionToolWithContext
 
@@ -132,10 +135,6 @@ class OrchestratorAgent(Workflow):
         active_speaker = await ctx.get("active_speaker", default="")
         user_msg = ev.get("user_msg")
         agent_configs = ev.get("agent_configs", default=[])
-        # llm: FunctionCallingLLM = ev.get("llm", default=Gemini(generation_config=GenerationConfig(temperature=0),api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg"))
-        # llm: FunctionCallingLLM = FunctionCallingLLM(ev.get("llm",
-        #                                  default=Gemini(api_key="AIzaSyBOk5EvenHMl9BmgCXj8AbL32BuYaODrtg")
-        #                                  ))
         llm: LLM = ev.get("llm", default=MistralAI(model="mistral-large-latest"))
 
         chat_history = ev.get("chat_history", default=[])
@@ -151,7 +150,6 @@ class OrchestratorAgent(Workflow):
             )
 
         if not llm.metadata.is_function_calling_model:
-            print(llm.metadata)
             raise ValueError("LLM must be a function calling model!")
 
         # store the agent configs in the context
@@ -159,7 +157,7 @@ class OrchestratorAgent(Workflow):
         await ctx.set("agent_configs", agent_configs_dict)
         await ctx.set("llm", llm)
 
-        chat_history.append(ChatMessage(role="user", content=user_msg))
+        chat_history.append(ChatMessage(role=MessageRole.USER, content=user_msg))
         await ctx.set("chat_history", chat_history)
 
         await ctx.set("user_state", initial_state)
@@ -190,24 +188,28 @@ class OrchestratorAgent(Workflow):
             + f"\n\nHere is the current user state:\n{user_state_str}"
         )
 
+        llm_input = [ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)] + chat_history
 
-        llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
-        # for msg in llm_input:
-        #     if msg.role == 'tool':
-        #         msg.tool_call_id = msg.additional_kwargs.get('tool_call_id')
         # inject the request transfer tool into the list of tools
-        # tools = [get_function_tool(RequestTransfer)] + agent_config.tools
-        tools = agent_config.tools
+        tools = [get_function_tool(RequestTransfer)] + agent_config.tools
+
         print("tools :",tools)
         print("inside agent: before ")
         print("llm_input :",llm_input)
-        response = await llm.achat_with_tools(tools, chat_history=llm_input,tool_choice="any")
+
+        response = await llm.achat_with_tools(
+            tools,
+            chat_history=llm_input,
+            tool_choice="required"
+        )
+
         print("inside agent: after ")
-        time.sleep(5)
+        await asyncio.sleep(5)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
+
         print("called tools :",tool_calls)
         if len(tool_calls) == 0:
             chat_history.append(response.message)
@@ -229,7 +231,6 @@ class OrchestratorAgent(Workflow):
                 )
                 return OrchestratorEvent()
             elif tool_call.tool_name in agent_config.tools_requiring_human_confirmation:
-                print("human here")
                 ctx.write_event_to_stream(
                     ToolRequestEvent(
                         prefix=f"Tool {tool_call.tool_name} requires human approval.",
@@ -266,10 +267,11 @@ class OrchestratorAgent(Workflow):
         else:
             return ToolCallResultEvent(
                 chat_message=ChatMessage(
-                    role="tool",
+                    role=MessageRole.TOOL,
                     content=ev.response or self.default_tool_reject_str,
                 )
             )
+
 
     @step(num_workers=4)
     async def handle_tool_call(
@@ -279,13 +281,10 @@ class OrchestratorAgent(Workflow):
         tool_call = ev.tool_call
         tools_by_name = {tool.metadata.get_name(): tool for tool in ev.tools}
 
-        tool_msg = None
-
         tool = tools_by_name.get(tool_call.tool_name)
         print("selected tool, ",tool_call)
         additional_kwargs = {
             "tool_call_id": tool_call.tool_id,
-            # "id": tool_call.tool_id,
             "name": tool.metadata.get_name(),
         }
         if not tool:
@@ -296,10 +295,10 @@ class OrchestratorAgent(Workflow):
             )
 
         try:
-            # if isinstance(tool, FunctionToolWithContext):
-            #     tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
-            # else:
-            tool_output = await tool.acall(**tool_call.tool_kwargs)
+            if isinstance(tool, FunctionToolWithContext):
+                tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
+            else:
+                tool_output = await tool.acall(**tool_call.tool_kwargs)
             tool_msg = ChatMessage(
                 role=MessageRole.TOOL,
                 content=tool_output.content,
@@ -357,14 +356,14 @@ class OrchestratorAgent(Workflow):
             user_state_str=user_state_str
         )
 
-        llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
+        llm_input = [ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)] + chat_history
         llm = await ctx.get("llm")
 
         # convert the TransferToAgent pydantic model to a tool
         tools = [get_function_tool(TransferToAgent)]
 
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        time.sleep(5)
+        await asyncio.sleep(5)
         tool_calls = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
