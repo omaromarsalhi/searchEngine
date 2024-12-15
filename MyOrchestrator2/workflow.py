@@ -193,8 +193,8 @@ class OrchestratorAgent(Workflow):
         # inject the request transfer tool into the list of tools
         tools = [get_function_tool(RequestTransfer)] + agent_config.tools
 
+        await asyncio.sleep(2)
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        await asyncio.sleep(5)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
@@ -257,10 +257,18 @@ class OrchestratorAgent(Workflow):
                 ),
             )
         else:
+            new_response =("the user has rejected the tool call and this is his reason : "+ev.response+" ."
+                           "if his reason does not make any sense then take this instead "
+                           +self.default_tool_reject_str)
             return ToolCallResultEvent(
                 chat_message=ChatMessage(
                     role=MessageRole.TOOL,
-                    content=ev.response or self.default_tool_reject_str,
+                    # content=ev.response or self.default_tool_reject_str,
+                    content=new_response,
+                    additional_kwargs={
+                        "tool_call_id": ev.tool_id,
+                        "name": ev.tool_name,
+                    },
                 )
             )
 
@@ -353,8 +361,9 @@ class OrchestratorAgent(Workflow):
         # convert the TransferToAgent pydantic model to a tool
         tools = [get_function_tool(TransferToAgent)]
 
+        await asyncio.sleep(2)
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        await asyncio.sleep(5)
+
 
         tool_calls = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False

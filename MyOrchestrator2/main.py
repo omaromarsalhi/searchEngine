@@ -55,12 +55,13 @@ def get_authentication_tools() -> list[BaseTool]:
         user_state = await ctx.get("user_state")
         return user_state["session_token"] is not None
 
-    async def store_username(ctx: Context, username: str) -> None:
+    async def store_username(ctx: Context, username: str) -> str:
         """Adds the username to the user state."""
         ctx.write_event_to_stream(ProgressEvent(msg="Recording username"))
         user_state = await ctx.get("user_state")
         user_state["username"] = username
         await ctx.set("user_state", user_state)
+        return (f"Username {username} recorded in user state.")
 
     async def login(ctx: Context, password: str) -> str:
         """Given a password, logs in and stores a session token in the user state."""
@@ -204,6 +205,7 @@ You are a helpful assistant that is authenticating a user.
 Your task is to get a valid session token stored in the user state.
 To do this, the user must supply you with a username and a valid password. You can ask them to supply these.
 If the user supplies a username and password, call the tool "login" to log them in.
+If the user does not save his username so do no proceed to the login process and stop 
 Once the user is logged in and authenticated, you can transfer them to another agent.
             """,
             tools=get_authentication_tools(),
@@ -267,10 +269,6 @@ async def main():
                     + "SYSTEM >> I need approval for the following tool call:"
                     + Style.RESET_ALL
                 )
-                print(event.tool_name)
-                print(event.tool_kwargs)
-                print()
-
                 approved = input("Do you approve? (y/n): ")
                 if "y" in approved.lower():
                     handler.ctx.send_event(
