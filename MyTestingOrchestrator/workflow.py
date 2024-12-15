@@ -28,6 +28,7 @@ from llama_index.core.workflow import (
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 
+from MyTestingOrchestrator.MyMistralAI import MyMistralAI
 from MyTestingOrchestrator.utils import FunctionToolWithContext
 
 # from utils import FunctionToolWithContext
@@ -135,7 +136,7 @@ class OrchestratorAgent(Workflow):
         active_speaker = await ctx.get("active_speaker", default="")
         user_msg = ev.get("user_msg")
         agent_configs = ev.get("agent_configs", default=[])
-        llm: LLM = ev.get("llm", default=MistralAI(model="mistral-large-latest"))
+        llm: LLM = ev.get("llm", default=MyMistralAI(model="mistral-large-latest"))
 
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})

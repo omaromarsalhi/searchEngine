@@ -3,6 +3,8 @@ import configparser
 import os
 
 from llama_index.llms.mistralai import MistralAI
+
+from MyTestingOrchestrator.MyMistralAI import MyMistralAI
 from workflow import (
     AgentConfig,
     OrchestratorAgent,
@@ -229,6 +231,10 @@ os.environ["MISTRAL_API_KEY"] = config.get('API', 'mistral_key')
 #         ),
 #     ]
 
+def stop() -> None:
+    """Used to indicate that your job is done and you would like to stop here and send bach the response to the orchestrator."""
+    pass
+
 def request_transfer() -> None:
     """Used to indicate that your job is done and you would like to transfer control to another agent."""
     pass
@@ -239,14 +245,15 @@ def add_two_numbers(a: float, b: float) -> float:
     return a + b
 
 add_two_numbers_tool = FunctionToolWithContext.from_defaults(fn=add_two_numbers)
-stop_function = FunctionToolWithContext.from_defaults(fn=request_transfer)
+request_transfer = FunctionToolWithContext.from_defaults(fn=request_transfer)
+stop_function = FunctionToolWithContext.from_defaults(fn=stop)
 
 agent_configs = AgentConfig(
     name="Addition Agent",
     description="Used to add two numbers together.",
     system_prompt="You are an agent that adds two numbers together"
                   "always look in the additional_kwargs to find the functions ids or any related information about the function ",
-    tools=[add_two_numbers_tool],
+    tools=[add_two_numbers_tool,request_transfer,stop_function],
     tools_requiring_human_confirmation=[],
 )
 
@@ -332,7 +339,7 @@ agent_configs = AgentConfig(
 #         )
 
 workflow = OrchestratorAgent(timeout=None)
-llm=MistralAI()
+llm=MyMistralAI()
 
 async def main():
     handler = workflow.run(

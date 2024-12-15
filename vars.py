@@ -27,7 +27,7 @@
 #             print(f"Error downloading playlist: {e}")
 #
 # if __name__ == "__main__":
-#     playlist_url = "https://www.youtube.com/watch?v=CqOfi41LfDw&list=PLblh5JKOoLUIxGDQs4LFFD--41Vzf-ME1"
+#     playlist_url = "https://youtu.be/yK1uBHPdp30?si=EyRRRPhZT36l7oNa"
 #     save_path = "./vedio"
 #     download_playlist(playlist_url, save_path)
 
