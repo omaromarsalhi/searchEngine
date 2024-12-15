@@ -144,7 +144,7 @@ tools = [
 ]
 
 model = "mistral-large-latest"
-client = MyMistralAI(api_key=config.get('API', 'mistral_key'))
+client = MistralAI(api_key=config.get('API', 'mistral_key'))
 
 # Step 3: Correct Interaction with the Model
 # Initial query message

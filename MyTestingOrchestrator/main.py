@@ -2,6 +2,7 @@ import asyncio
 import configparser
 import os
 
+from llama_index.core.tools import FunctionTool
 from llama_index.llms.mistralai import MistralAI
 
 from MyTestingOrchestrator.MyMistralAI import MyMistralAI
@@ -17,6 +18,7 @@ from utils import FunctionToolWithContext
 config = configparser.ConfigParser()
 config.read("../config.ini")
 os.environ["MISTRAL_API_KEY"] = config.get('API', 'mistral_key')
+
 
 # def get_initial_state() -> dict:
 #     return {
@@ -231,29 +233,33 @@ os.environ["MISTRAL_API_KEY"] = config.get('API', 'mistral_key')
 #         ),
 #     ]
 
-def stop() -> None:
-    """Used to indicate that your job is done and you would like to stop here and send bach the response to the orchestrator."""
-    pass
 
 def request_transfer() -> None:
-    """Used to indicate that your job is done and you would like to transfer control to another agent."""
+    """
+    Indicate that your task is complete and explicitly request assistance from another agent.
+
+    This function should only be used when your work is finished and further progress requires
+    the help of another agent. Avoid using this function if the task can be completed
+    independently without external assistance.
+    """
     pass
+
 
 def add_two_numbers(a: float, b: float) -> float:
     """Used to add two numbers together."""
     print("banana")
     return a + b
 
-add_two_numbers_tool = FunctionToolWithContext.from_defaults(fn=add_two_numbers)
-request_transfer = FunctionToolWithContext.from_defaults(fn=request_transfer)
-stop_function = FunctionToolWithContext.from_defaults(fn=stop)
+
+add_two_numbers_tool = FunctionTool.from_defaults(fn=add_two_numbers)
+request_transfer = FunctionTool.from_defaults(
+    fn=request_transfer)
 
 agent_configs = AgentConfig(
     name="Addition Agent",
     description="Used to add two numbers together.",
-    system_prompt="You are an agent that adds two numbers together"
-                  "always look in the additional_kwargs to find the functions ids or any related information about the function ",
-    tools=[add_two_numbers_tool,request_transfer,stop_function],
+    system_prompt="You are an agent that adds two numbers together ",
+    tools=[add_two_numbers_tool, request_transfer],
     tools_requiring_human_confirmation=[],
 )
 
@@ -339,7 +345,8 @@ agent_configs = AgentConfig(
 #         )
 
 workflow = OrchestratorAgent(timeout=None)
-llm=MyMistralAI()
+llm = MyMistralAI()
+
 
 async def main():
     handler = workflow.run(
@@ -371,6 +378,7 @@ async def main():
     # Await the final result of the handler
     final_result = await handler
     print(final_result["response"])
+
 
 if __name__ == "__main__":
     asyncio.run(main())
