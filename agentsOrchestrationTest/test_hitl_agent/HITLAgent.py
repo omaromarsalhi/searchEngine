@@ -1,9 +1,10 @@
 import configparser
+import json
 import os
 from typing import Any
 
 from llama_index.core.llms.function_calling import FunctionCallingLLM
-
+from llama_index.core.output_parsers import PydanticOutputParser
 
 from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
@@ -14,7 +15,7 @@ from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.program.function_program import get_function_tool
 from llama_index.core.tools import (
     BaseTool,
-    ToolSelection,
+    ToolSelection, FunctionTool,
 )
 from llama_index.core.workflow import (
     Event,
@@ -26,9 +27,8 @@ from llama_index.core.workflow import (
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 
-from agentsOrchestration.MyGeminiModel import MyGeminiModel
-from utils import FunctionToolWithContext
-
+from agentsOrchestrationTest.MyGeminiModel import MyGeminiModel
+from agentsOrchestrationTest.utils import FunctionToolWithContext
 
 
 # config = configparser.ConfigParser()
@@ -101,62 +101,127 @@ class ProgressEvent(Event):
     msg: str
 
 
+class ChatMessageOutputParser(PydanticOutputParser):
+    def __init__(self, output_class):
+        super().__init__(output_class)
+
+    def parse_output(self, model_output: str) -> ChatMessage:
+        # Assuming the model output is already a dictionary
+        return self.parse_output(model_output)
+
+
 # ---- Workflow ----
 
+# DEFAULT_ORCHESTRATOR_PROMPT = (
+#     "You are on orchestration agent.\n"
+#     "Your job is to decide which agent to run based on the current state of the user and what they've asked to do.\n"
+#     "Just choose an agent and pass the work to it do not under any case answer the question yourself\n"
+#     "You do not need to figure out dependencies between agents; the agents will handle that themselves.\n"
+#     "Here the the agents you can choose from:\n{agent_context_str}\n\n"
+#     "Here is the current user state:\n{user_state_str}\n\n"
+#     "Please assist the user and transfer them as needed."
 DEFAULT_ORCHESTRATOR_PROMPT = (
-    "You are on orchestration agent.\n"
+    "You are an orchestration agent.\n"
     "Your job is to decide which agent to run based on the current state of the user and what they've asked to do.\n"
-    "You do not need to figure out dependencies between agents; the agents will handle that themselves.\n"
-    "Here the the agents you can choose from:\n{agent_context_str}\n\n"
-    "Here is the current user state:\n{user_state_str}\n\n"
-    "Please assist the user and transfer them as needed."
+    "Always use the 'TransferToAgent' tool to select an agent.\n"
+    "if the agent gives you an answer then return it"
+    "\n"
+    "### Instructions for Your Response ###\n"
+    "- Do not directly answer the user's question.\n"
+    "- Always include a tool call in your response.\n"
+    "- The response format must be a ChatResponse, which includes:\n"
+    "  - message: The main message from the LLM (role, content, additional_kwargs).\n"
+    "  - raw: Additional raw data (optional).\n"
+    "  - delta: Partial information or a delta (optional).\n"
+    "  - logprobs: Log probabilities (optional).\n"
+    "  - additional_kwargs: Any other additional information you need.\n"
+    "\n"
+    "The response format must be:\n"
+    "  {{\n"
+    "    \"message\": {{\n"
+    "      \"role\": \"assistant\",\n"
+    "      \"content\": \"Transfer the task to <AGENT_NAME> agent\",\n"
+    "      \"additional_kwargs\": {{\n"
+    "        \"tool_calls\": [\n"
+    "          {{\n"
+    "            \"id\": \"unique_tool_call_id\",\n"
+    "            \"type\": \"function\",\n"
+    "            \"function\": {{\n"
+    "              \"name\": \"TransferToAgent\",\n"
+    "              \"arguments\": \"{{\\\"agent_name\\\": \\\"<AGENT_NAME>\\\"}}\"\n"
+    "            }}\n"
+    "          }}\n"
+    "        ]\n"
+    "      }}\n"
+    "    }},\n"
+    "    \"raw\": null,\n"
+    "    \"delta\": null,\n"
+    "    \"logprobs\": null,\n"
+    "    \"additional_kwargs\": {{\n"
+    "      \"extra_info\": \"Optional extra data\"\n"
+    "    }}\n"
+    "  }}\n"
+    "\n"
+    "### Agents Available ###\n"
+    "{agent_context_str}\n"
+    "\n"
+    "### Current User State ###\n"
+    "{user_state_str}\n"
+    "\n"
+    "Help the user by transferring their query to the most appropriate agent."
 )
+
 DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mistake or preconditions not being met."
 
 
+def request_transfer() -> None:
+    """Used to indicate that your job is done and you would like to transfer control to another agent."""
+    pass
 
 
 class OrchestratorAgent(Workflow):
     def __init__(
-        self,
-        orchestrator_prompt: str | None = None,
-        default_tool_reject_str: str | None = None,
-        **kwargs: Any,
+            self,
+            orchestrator_prompt: str | None = None,
+            default_tool_reject_str: str | None = None,
+            **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self.orchestrator_prompt = orchestrator_prompt or DEFAULT_ORCHESTRATOR_PROMPT
         self.default_tool_reject_str = (
-            default_tool_reject_str or DEFAULT_TOOL_REJECT_STR
+                default_tool_reject_str or DEFAULT_TOOL_REJECT_STR
         )
+
+    def transfer_to_agent(self, agent_name: str) -> None:
+        """Used to transfer the user to a specific agent."""
+        pass
 
     @step
     async def setup(
-        self, ctx: Context, ev: StartEvent
+            self, ctx: Context, ev: StartEvent
     ) -> ActiveSpeakerEvent | OrchestratorEvent:
         """Sets up the workflow, validates inputs, and stores them in the context."""
+
         active_speaker = await ctx.get("active_speaker", default="")
         user_msg = ev.get("user_msg")
         agent_configs = ev.get("agent_configs", default=[])
-        llm: LLM = ev.get("llm", default=MyGeminiModel())
+        llm: LLM = ev.get("llm", default=MyGeminiModel(model_name="models/gemini-1.5-flash-latest"))
 
         chat_history = ev.get("chat_history", default=[])
         initial_state = ev.get("initial_state", default={})
         if (
-            user_msg is None
-            or agent_configs is None
-            or llm is None
-            or chat_history is None
+                user_msg is None
+                or agent_configs is None
+                or llm is None
+                or chat_history is None
         ):
             raise ValueError(
                 "User message, agent configs, llm, and chat_history are required!"
             )
 
-        # if not llm.metadata.is_function_calling_model:
-        #     print(llm.metadata)
-        #     raise ValueError("LLM must be a function calling model!")
-
         # store the agent configs in the context
         agent_configs_dict = {ac.name: ac for ac in agent_configs}
+
         await ctx.set("agent_configs", agent_configs_dict)
         await ctx.set("llm", llm)
 
@@ -169,12 +234,13 @@ class OrchestratorAgent(Workflow):
         if active_speaker:
             return ActiveSpeakerEvent()
 
+        print("OrchestratorEvent")
         # otherwise, we need to decide who the next active speaker is
         return OrchestratorEvent(user_msg=user_msg)
 
     @step
     async def speak_with_sub_agent(
-        self, ctx: Context, ev: ActiveSpeakerEvent
+            self, ctx: Context, ev: ActiveSpeakerEvent
     ) -> ToolCallEvent | ToolRequestEvent | StopEvent:
         """Speaks with the active sub-agent and handles tool calls (if any)."""
 
@@ -187,20 +253,24 @@ class OrchestratorAgent(Workflow):
         user_state = await ctx.get("user_state")
         user_state_str = "\n".join([f"{k}: {v}" for k, v in user_state.items()])
         system_prompt = (
-            agent_config.system_prompt.strip()
-            + f"\n\nHere is the current user state:\n{user_state_str}"
+                agent_config.system_prompt.strip()
+                + f"\n\nHere is the current user state:\n{user_state_str}\n"
         )
 
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
 
+        request_transfer_tool = FunctionTool.from_defaults(fn=request_transfer)
         # inject the request transfer tool into the list of tools
-        tools = [get_function_tool(RequestTransfer)] + agent_config.tools
+        tools = [request_transfer_tool] + agent_config.tools
+        # tools = agent_config.tools
 
-        response = await llm.achat_with_tools(tools, chat_history=llm_input)
+        response = await llm.my_achat_with_tools_for_agent_test(tools, chat_history=llm_input)
 
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
+        print("agent tools: ", tool_calls)
+
         if len(tool_calls) == 0:
             chat_history.append(response.message)
             await ctx.set("chat_history", chat_history)
@@ -220,6 +290,7 @@ class OrchestratorAgent(Workflow):
                     ProgressEvent(msg="Agent is requesting a transfer. Please hold.")
                 )
                 return OrchestratorEvent()
+
             elif tool_call.tool_name in agent_config.tools_requiring_human_confirmation:
                 ctx.write_event_to_stream(
                     ToolRequestEvent(
@@ -239,7 +310,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def handle_tool_approval(
-        self, ctx: Context, ev: ToolApprovedEvent
+            self, ctx: Context, ev: ToolApprovedEvent
     ) -> ToolCallEvent | ToolCallResultEvent:
         """Handles the approval or rejection of a tool call."""
         if ev.approved:
@@ -263,7 +334,7 @@ class OrchestratorAgent(Workflow):
 
     @step(num_workers=4)
     async def handle_tool_call(
-        self, ctx: Context, ev: ToolCallEvent
+            self, ctx: Context, ev: ToolCallEvent
     ) -> ActiveSpeakerEvent:
         """Handles the execution of a tool call."""
         tool_call = ev.tool_call
@@ -272,6 +343,7 @@ class OrchestratorAgent(Workflow):
         tool_msg = None
 
         tool = tools_by_name.get(tool_call.tool_name)
+
         additional_kwargs = {
             "tool_call_id": tool_call.tool_id,
             "name": tool.metadata.get_name(),
@@ -285,14 +357,25 @@ class OrchestratorAgent(Workflow):
 
         try:
             if isinstance(tool, FunctionToolWithContext):
-                tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
+                print("in the calling function")
+                tool_output = tool.call(ctx, **tool_call.tool_kwargs)
             else:
-                tool_output = await tool.acall(**tool_call.tool_kwargs)
+                tool_output = tool.call(**tool_call.tool_kwargs)
+
+
+            content = {
+                'function_response': {
+                    'name': tool_output.tool_name,
+                    'args': tool_call.tool_kwargs,
+                    'response': tool_output.content
+                }
+            }
+
+            print("my new content of tool: ",content)
 
             tool_msg = ChatMessage(
                 role="tool",
-                content=tool_output.content,
-                additional_kwargs=additional_kwargs,
+                content=content,
             )
         except Exception as e:
             tool_msg = ChatMessage(
@@ -311,7 +394,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def aggregate_tool_results(
-        self, ctx: Context, ev: ToolCallResultEvent
+            self, ctx: Context, ev: ToolCallResultEvent
     ) -> ActiveSpeakerEvent:
         """Collects the results of all tool calls and updates the chat history."""
         num_tool_calls = await ctx.get("num_tool_calls")
@@ -328,7 +411,7 @@ class OrchestratorAgent(Workflow):
 
     @step
     async def orchestrator(
-        self, ctx: Context, ev: OrchestratorEvent
+            self, ctx: Context, ev: OrchestratorEvent
     ) -> ActiveSpeakerEvent | StopEvent:
         """Decides which agent to run next, if any."""
         agent_configs = await ctx.get("agent_configs")
@@ -347,11 +430,13 @@ class OrchestratorAgent(Workflow):
         llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
         llm = await ctx.get("llm")
 
+        transfer_to_agent_tool = FunctionTool.from_defaults(fn=self.transfer_to_agent)
         # convert the TransferToAgent pydantic model to a tool
-        tools = [get_function_tool(TransferToAgent)]
+        tools = [transfer_to_agent_tool]
 
-        response = await llm.achat_with_tools(tools, chat_history=llm_input)
-        tool_calls = llm.get_tool_calls_from_response(
+        response = await llm.my_achat_with_tools(tools, chat_history=llm_input)
+
+        tool_calls = llm.get_agent_calls_from_response(
             response, error_on_no_tool_call=False
         )
 
@@ -367,6 +452,7 @@ class OrchestratorAgent(Workflow):
 
         tool_call = tool_calls[0]
         selected_agent = tool_call.tool_kwargs["agent_name"]
+        print("selected_agent", selected_agent)
         await ctx.set("active_speaker", selected_agent)
 
         ctx.write_event_to_stream(

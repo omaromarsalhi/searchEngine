@@ -8,7 +8,7 @@ from llama_index.llms.gemini import Gemini
 from llama_index.llms.gemini.utils import completion_from_gemini_response
 import google.generativeai as genai
 
-from agentsOrchestration.test_hitl_agent.MyGeminiModel import MyGeminiModel
+from agentsOrchestrationTest.test_hitl_agent.MyGeminiModel import MyGeminiModel
 
 
 import llama_index

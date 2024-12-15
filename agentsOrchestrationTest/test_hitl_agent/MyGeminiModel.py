@@ -15,7 +15,7 @@ from llama_index.llms.gemini.utils import _error_if_finished_early
 from llama_index.llms.openai.utils import resolve_tool_choice, OpenAIToolCall
 import google.generativeai as genai
 
-from agentsOrchestration.test_hitl_agent.GeminiTools import GeminiTools
+from agentsOrchestrationTest.test_hitl_agent.GeminiTools import GeminiTools
 
 
 def request_transfer() -> None:

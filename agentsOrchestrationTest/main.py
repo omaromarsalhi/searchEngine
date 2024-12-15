@@ -2,11 +2,10 @@ import asyncio
 import configparser
 import os
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.tools import BaseTool
+from llama_index.core.tools import BaseTool, FunctionTool
 from llama_index.core.workflow import Context
 
-from MyOrchestrator2.MyMistralAI import MyMistralAI
-
+from agentsOrchestrationTest.MyGeminiModel import MyGeminiModel
 from workflow import (
     AgentConfig,
     ProgressEvent,
@@ -17,12 +16,12 @@ from utils import FunctionToolWithContext
 
 config = configparser.ConfigParser()
 config.read("../config.ini")
-os.environ["MISTRAL_API_KEY"] = config.get('API', 'mistral_key')
+os.environ["GOOGLE_API_KEY"] = config.get('API', 'gemini_key')
+
 
 def get_initial_state() -> dict:
     return {
         "username": None,
-        "password": None,
         "session_token": None,
         "account_id": None,
         "account_balance": None,
@@ -43,8 +42,8 @@ def get_stock_lookup_tools() -> list[BaseTool]:
         return company_name.upper()
 
     return [
-        FunctionToolWithContext.from_defaults(fn=lookup_stock_price),
-        FunctionToolWithContext.from_defaults(fn=search_for_stock_symbol),
+        # FunctionToolWithContext.from_defaults(fn=lookup_stock_price),
+        # FunctionToolWithContext.from_defaults(fn=search_for_stock_symbol),
     ]
 
 
@@ -55,33 +54,31 @@ def get_authentication_tools() -> list[BaseTool]:
         user_state = await ctx.get("user_state")
         return user_state["session_token"] is not None
 
-    async def store_username(ctx: Context, username: str) -> str:
+    async def store_username(ctx: Context, username: str) -> None:
         """Adds the username to the user state."""
         ctx.write_event_to_stream(ProgressEvent(msg="Recording username"))
         user_state = await ctx.get("user_state")
         user_state["username"] = username
         await ctx.set("user_state", user_state)
-        return (f"Username {username} recorded in user state.")
 
     async def login(ctx: Context, password: str) -> str:
+        print(f"password is:{password}")
         """Given a password, logs in and stores a session token in the user state."""
         user_state = await ctx.get("user_state")
         username = user_state["username"]
         ctx.write_event_to_stream(ProgressEvent(msg=f"Logging in user {username}"))
         session_token = "1234567890"
-        user_state["password"] = password
         user_state["session_token"] = session_token
         user_state["account_id"] = "123"
         user_state["account_balance"] = 1000
         await ctx.set("user_state", user_state)
-        return (f"Logged in user {username} with session token {session_token}."
-                f" They have an account with id {user_state['account_id']} and a balance of ${user_state['account_balance']}.")
 
+        return f"Logged in user {username} with session token {session_token}. They have an account with id {user_state['account_id']} and a balance of ${user_state['account_balance']}."
 
     return [
-        FunctionToolWithContext.from_defaults(async_fn=store_username),
-        FunctionToolWithContext.from_defaults(async_fn=login),
-        FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
+        # FunctionToolWithContext.from_defaults(async_fn=store_username),
+        FunctionToolWithContext.from_defaults(fn=login),
+        # FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 
 
@@ -121,9 +118,9 @@ def get_account_balance_tools() -> list[BaseTool]:
         return f"Account {account_id} has a balance of ${account_balance}"
 
     return [
-        FunctionToolWithContext.from_defaults(async_fn=get_account_id),
-        FunctionToolWithContext.from_defaults(async_fn=get_account_balance),
-        FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
+        # FunctionToolWithContext.from_defaults(async_fn=get_account_id),
+        # FunctionToolWithContext.from_defaults(async_fn=get_account_balance),
+        # FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 
 
@@ -177,10 +174,10 @@ def get_transfer_money_tools() -> list[BaseTool]:
         )
 
     return [
-        FunctionToolWithContext.from_defaults(async_fn=transfer_money),
-        FunctionToolWithContext.from_defaults(async_fn=balance_sufficient),
-        FunctionToolWithContext.from_defaults(async_fn=has_balance),
-        FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
+        # FunctionToolWithContext.from_defaults(async_fn=transfer_money),
+        # FunctionToolWithContext.from_defaults(async_fn=balance_sufficient),
+        # FunctionToolWithContext.from_defaults(async_fn=has_balance),
+        # FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 
 
@@ -205,11 +202,9 @@ You are a helpful assistant that is authenticating a user.
 Your task is to get a valid session token stored in the user state.
 To do this, the user must supply you with a username and a valid password. You can ask them to supply these.
 If the user supplies a username and password, call the tool "login" to log them in.
-If the user does not save his username so do no proceed to the login process and stop 
 Once the user is logged in and authenticated, you can transfer them to another agent.
             """,
             tools=get_authentication_tools(),
-            tools_requiring_human_confirmation=["store_username"],
         ),
         AgentConfig(
             name="Account Balance Agent",
@@ -244,7 +239,7 @@ async def main():
     from colorama import Fore, Style
 
     # llm = OpenAI(model="gpt-4o", temperature=0.4)
-    llm = MyMistralAI()
+    llm = MyGeminiModel()
     memory = ChatMemoryBuffer.from_defaults(llm=llm)
     initial_state = get_initial_state()
     agent_configs = get_agent_configs()
@@ -269,6 +264,10 @@ async def main():
                     + "SYSTEM >> I need approval for the following tool call:"
                     + Style.RESET_ALL
                 )
+                print(event.tool_name)
+                print(event.tool_kwargs)
+                print()
+
                 approved = input("Do you approve? (y/n): ")
                 if "y" in approved.lower():
                     handler.ctx.send_event(

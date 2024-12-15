@@ -23,8 +23,8 @@ from llama_index.core.workflow import (
 )
 from llama_index.core.workflow.events import InputRequiredEvent, HumanResponseEvent
 
-from MyOrchestrator2.MyMistralAI import MyMistralAI
-from agentsOrchestration.MyGeminiModel import MyGeminiModel
+from Orchestrator.MyMistralAI import MyMistralAI
+from agentsOrchestrationTest.MyGeminiModel import MyGeminiModel
 from utils import FunctionToolWithContext
 
 

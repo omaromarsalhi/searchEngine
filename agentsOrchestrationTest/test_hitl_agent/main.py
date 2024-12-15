@@ -5,13 +5,13 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.workflow import StartEvent
 from llama_index.llms.gemini import Gemini
 
-from agentsOrchestration.test_hitl_agent.MyGeminiModel import MyGeminiModel
-from agentsOrchestration.test_hitl_agent.AgentConfig import AgentConfig
-from agentsOrchestration.test_hitl_agent.HITLAgent import ToolRequestEvent, ProgressEvent, ToolApprovedEvent, \
+from agentsOrchestrationTest.test_hitl_agent.MyGeminiModel import MyGeminiModel
+from agentsOrchestrationTest.test_hitl_agent.AgentConfig import AgentConfig
+from agentsOrchestrationTest.test_hitl_agent.HITLAgent import ToolRequestEvent, ProgressEvent, ToolApprovedEvent, \
     OrchestratorAgent
 import asyncio
 
-from agentsOrchestration.utils import FunctionToolWithContext
+from agentsOrchestrationTest.utils import FunctionToolWithContext
 
 config = configparser.ConfigParser()
 config.read("../../config.ini")
