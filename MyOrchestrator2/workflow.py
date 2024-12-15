@@ -108,6 +108,7 @@ DEFAULT_ORCHESTRATOR_PROMPT = (
     "Here is the current user state:\n{user_state_str}\n\n"
     "Please assist the user and transfer them as needed."
 )
+
 DEFAULT_TOOL_REJECT_STR = "The tool call was not approved, likely due to a mistake or preconditions not being met."
 
 
