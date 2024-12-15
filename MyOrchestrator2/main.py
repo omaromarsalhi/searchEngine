@@ -65,7 +65,6 @@ def get_authentication_tools() -> list[BaseTool]:
 
     async def login(ctx: Context, password: str) -> str:
         """Given a password, logs in and stores a session token in the user state."""
-        # print(f"password is:{password}")
         print("starts")
         user_state = await ctx.get("user_state")
         print("ends")
@@ -77,12 +76,13 @@ def get_authentication_tools() -> list[BaseTool]:
         user_state["account_id"] = "123"
         user_state["account_balance"] = 1000
         await ctx.set("user_state", user_state)
+        return (f"Logged in user {username} with session token {session_token}."
+                f" They have an account with id {user_state['account_id']} and a balance of ${user_state['account_balance']}.")
 
-        return f"Logged in user {username} with session token {session_token}. They have an account with id {user_state['account_id']} and a balance of ${user_state['account_balance']}."
 
     return [
         FunctionToolWithContext.from_defaults(async_fn=store_username),
-        FunctionToolWithContext.from_defaults(fn=login),
+        FunctionToolWithContext.from_defaults(async_fn=login),
         FunctionToolWithContext.from_defaults(async_fn=is_authenticated),
     ]
 

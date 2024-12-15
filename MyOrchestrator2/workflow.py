@@ -2,6 +2,8 @@ import asyncio
 import configparser
 import os
 from typing import Any
+
+from llama_index.core.base.llms.types import MessageRole
 from pydantic import BaseModel, ConfigDict, Field
 
 from llama_index.core.llms import ChatMessage, LLM
@@ -154,7 +156,7 @@ class OrchestratorAgent(Workflow):
         await ctx.set("agent_configs", agent_configs_dict)
         await ctx.set("llm", llm)
 
-        chat_history.append(ChatMessage(role="user", content=user_msg))
+        chat_history.append(ChatMessage(role=MessageRole.USER, content=user_msg))
         await ctx.set("chat_history", chat_history)
 
         await ctx.set("user_state", initial_state)
@@ -185,7 +187,7 @@ class OrchestratorAgent(Workflow):
             + f"\n\nHere is the current user state:\n{user_state_str}"
         )
 
-        llm_input = [ChatMessage(role="system", content=system_prompt)] + chat_history
+        llm_input = [ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)] + chat_history
 
         # inject the request transfer tool into the list of tools
         tools = [get_function_tool(RequestTransfer)] + agent_config.tools
@@ -196,6 +198,10 @@ class OrchestratorAgent(Workflow):
         tool_calls: list[ToolSelection] = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
+        for tool_call in tool_calls:
+            print(tool_call)
+
+
         if len(tool_calls) == 0:
             chat_history.append(response.message)
             await ctx.set("chat_history", chat_history)
@@ -215,6 +221,7 @@ class OrchestratorAgent(Workflow):
                     ProgressEvent(msg="Agent is requesting a transfer. Please hold.")
                 )
                 return OrchestratorEvent()
+
             elif tool_call.tool_name in agent_config.tools_requiring_human_confirmation:
                 ctx.write_event_to_stream(
                     ToolRequestEvent(
@@ -251,7 +258,7 @@ class OrchestratorAgent(Workflow):
         else:
             return ToolCallResultEvent(
                 chat_message=ChatMessage(
-                    role="tool",
+                    role=MessageRole.TOOL,
                     content=ev.response or self.default_tool_reject_str,
                 )
             )
@@ -261,10 +268,9 @@ class OrchestratorAgent(Workflow):
         self, ctx: Context, ev: ToolCallEvent
     ) -> ActiveSpeakerEvent:
         """Handles the execution of a tool call."""
+
         tool_call = ev.tool_call
         tools_by_name = {tool.metadata.get_name(): tool for tool in ev.tools}
-
-        tool_msg = None
 
         tool = tools_by_name.get(tool_call.tool_name)
         additional_kwargs = {
@@ -273,7 +279,7 @@ class OrchestratorAgent(Workflow):
         }
         if not tool:
             tool_msg = ChatMessage(
-                role="tool",
+                role=MessageRole.TOOL,
                 content=f"Tool {tool_call.tool_name} does not exist",
                 additional_kwargs=additional_kwargs,
             )
@@ -281,17 +287,18 @@ class OrchestratorAgent(Workflow):
         try:
             if isinstance(tool, FunctionToolWithContext):
                 tool_output = await tool.acall(ctx, **tool_call.tool_kwargs)
+                print("tool_output: ", tool_output)
             else:
                 tool_output = await tool.acall(**tool_call.tool_kwargs)
 
             tool_msg = ChatMessage(
-                role="tool",
+                role=MessageRole.TOOL,
                 content=tool_output.content,
                 additional_kwargs=additional_kwargs,
             )
         except Exception as e:
             tool_msg = ChatMessage(
-                role="tool",
+                role=MessageRole.TOOL,
                 content=f"Encountered error in tool call: {e}",
                 additional_kwargs=additional_kwargs,
             )
@@ -347,10 +354,13 @@ class OrchestratorAgent(Workflow):
 
         response = await llm.achat_with_tools(tools, chat_history=llm_input)
         await asyncio.sleep(5)
+
         tool_calls = llm.get_tool_calls_from_response(
             response, error_on_no_tool_call=False
         )
 
+        for tool_call in tool_calls:
+            print("from orchestrator",tool_call)
         # if no tool calls were made, the orchestrator probably needs more information
         if len(tool_calls) == 0:
             chat_history.append(response.message)
