@@ -2,11 +2,11 @@ import asyncio
 import configparser
 import os
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.tools import BaseTool, FunctionTool
+from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
 
 from MyOrchestrator2.MyMistralAI import MyMistralAI
-from agentsOrchestration.MyGeminiModel import MyGeminiModel
+
 from workflow import (
     AgentConfig,
     ProgressEvent,
@@ -57,7 +57,6 @@ def get_authentication_tools() -> list[BaseTool]:
 
     async def store_username(ctx: Context, username: str) -> None:
         """Adds the username to the user state."""
-        print("bananananana")
         ctx.write_event_to_stream(ProgressEvent(msg="Recording username"))
         user_state = await ctx.get("user_state")
         user_state["username"] = username
@@ -65,9 +64,7 @@ def get_authentication_tools() -> list[BaseTool]:
 
     async def login(ctx: Context, password: str) -> str:
         """Given a password, logs in and stores a session token in the user state."""
-        print("starts")
         user_state = await ctx.get("user_state")
-        print("ends")
         username = user_state["username"]
         ctx.write_event_to_stream(ProgressEvent(msg=f"Logging in user {username}"))
         session_token = "1234567890"
@@ -210,6 +207,7 @@ If the user supplies a username and password, call the tool "login" to log them 
 Once the user is logged in and authenticated, you can transfer them to another agent.
             """,
             tools=get_authentication_tools(),
+            tools_requiring_human_confirmation=["store_username"],
         ),
         AgentConfig(
             name="Account Balance Agent",
