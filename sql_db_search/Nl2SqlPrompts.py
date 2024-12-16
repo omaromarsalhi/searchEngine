@@ -52,7 +52,7 @@ response_prompt = (
     "SQL: {sql_query}\n"
     "SQL Response: {context_str}\n"
     "Response: "
-    "If the question does not relate to the database, return 'This question is not related to the database'.\n\n"
+    "If the question does not related to the database, return 'This question is not related to the database'.\n\n"
     "If the SQL query involves restricted operations (like DELETE, INSERT, UPDATE, or DROP), "
     "respond with 'Sorry, this operation is not allowed'. Otherwise, provide the result of the query."
 )

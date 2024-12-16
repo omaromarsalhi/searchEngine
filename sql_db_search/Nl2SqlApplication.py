@@ -6,6 +6,7 @@ from llama_index.embeddings.gemini import GeminiEmbedding
 from llama_index.llms.gemini import Gemini
 from sqlalchemy import create_engine, inspect
 from sql_db_search.Nl2SqlPrompts import custom_prompt, response_prompt
+import mysql.connector
 
 
 class Config:
